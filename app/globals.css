@@ -10,6 +10,12 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-epaud: var(--font-nunito);
+
+  --color-epaud-blue: #2563eb;
+  --color-epaud-blue-dark: #1d4ed8;
+  --color-epaud-navy: #17356b;
+  --color-epaud-sky: #eaf6ff;
 }
 
 @media (prefers-color-scheme: dark) {
