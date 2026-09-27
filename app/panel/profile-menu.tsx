@@ -2,18 +2,53 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getJson, postJson, type MeResult } from "@/components/api";
 import {
   ChevronDownIcon,
   FileIcon,
   LogOutIcon,
   UserIcon,
 } from "@/components/icons";
-import { SESSION_KEY } from "@/components/registration";
+
+const ROLE_LABELS: Record<string, string> = {
+  superadmin: "Superadmin",
+  kepala_sekolah: "Kepala Sekolah",
+  admin_sekolah: "Admin Sekolah",
+  guru: "Guru",
+  orang_tua: "Orang Tua",
+};
+
+function initials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || "?"
+  );
+}
 
 export function ProfileMenu() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [me, setMe] = useState<MeResult | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getJson<MeResult>("/api/auth/me").then((result) => {
+      if (!active) return;
+      if (result.ok) {
+        setMe(result.data);
+      } else if (result.status === 401) {
+        router.replace("/login");
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   useEffect(() => {
     if (!open) return;
@@ -39,15 +74,16 @@ export function ProfileMenu() {
     };
   }, [open]);
 
-  function handleLogout() {
-    try {
-      window.sessionStorage.removeItem(SESSION_KEY);
-    } catch {
-      // abaikan bila storage tidak tersedia
-    }
+  async function handleLogout() {
     setOpen(false);
-    router.push("/login");
+    await postJson("/api/auth/logout");
+    router.replace("/login");
+    router.refresh();
   }
+
+  const name = me?.nama || "Pengguna";
+  const roleLabel = me ? ROLE_LABELS[me.role] ?? me.role : "Memuat...";
+  const subtitle = me?.nama_sekolah ? `${roleLabel} · ${me.nama_sekolah}` : roleLabel;
 
   return (
     <div ref={containerRef} className="relative">
@@ -62,14 +98,14 @@ export function ProfileMenu() {
         }`}
       >
         <span className="flex size-9 items-center justify-center rounded-full bg-epaud-blue text-sm font-bold text-white">
-          SA
+          {initials(name)}
         </span>
-        <span className="hidden text-left sm:block">
-          <span className="block text-sm font-semibold leading-tight text-slate-800">
-            Siti Aminah
+        <span className="hidden max-w-[12rem] text-left sm:block">
+          <span className="block truncate text-sm font-semibold leading-tight text-slate-800">
+            {name}
           </span>
-          <span className="block text-[11px] leading-tight text-slate-500">
-            Admin Sekolah
+          <span className="block truncate text-[11px] leading-tight text-slate-500">
+            {subtitle}
           </span>
         </span>
         <ChevronDownIcon
