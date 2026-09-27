@@ -7,13 +7,13 @@ import { usePathname } from "next/navigation";
 import { LogoLockup } from "@/components/logo-lockup";
 import {
   BookIcon,
-  FileIcon,
+  BuildingIcon,
+  ChevronDownIcon,
   GridIcon,
+  HashIcon,
   HomeIcon,
   MenuIcon,
   SearchIcon,
-  SettingsIcon,
-  StarIcon,
   UserIcon,
   UsersIcon,
   XIcon,
@@ -21,20 +21,21 @@ import {
 import { NotificationMenu } from "./notification-menu";
 import { ProfileMenu } from "./profile-menu";
 
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/panel", icon: HomeIcon },
-  { label: "Data Anak", href: "#", icon: UsersIcon },
-  { label: "Data Guru", href: "#", icon: UserIcon },
-  { label: "Kelas", href: "#", icon: GridIcon },
-  { label: "Kegiatan Belajar", href: "#", icon: BookIcon },
-  { label: "Penilaian", href: "#", icon: StarIcon },
-  { label: "Laporan", href: "#", icon: FileIcon },
-  { label: "Pengaturan", href: "#", icon: SettingsIcon },
+const NAV_ITEMS = [{ label: "Dashboard", href: "/panel", icon: HomeIcon }];
+
+const MASTER_ITEMS = [
+  { label: "Tahun Ajaran", href: "/panel/tahun-ajaran", icon: HashIcon },
+  { label: "Guru", href: "/panel/guru", icon: UserIcon },
+  { label: "Admin Sekolah", href: "/panel/admin", icon: BuildingIcon },
+  { label: "Orang Tua", href: "/panel/orang-tua", icon: UsersIcon },
+  { label: "Murid", href: "/panel/murid", icon: UsersIcon },
+  { label: "Kelas", href: "/panel/kelas", icon: GridIcon },
 ];
 
 export function PanelShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [masterOpen, setMasterOpen] = useState(true);
 
   return (
     <div className="min-h-screen bg-slate-50 font-epaud text-slate-800">
@@ -86,6 +87,47 @@ export function PanelShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setMasterOpen((value) => !value)}
+              aria-expanded={masterOpen}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+            >
+              <BookIcon className="size-5 shrink-0" />
+              Master Data
+              <ChevronDownIcon
+                className={`ml-auto size-4 text-slate-400 transition-transform ${
+                  masterOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {masterOpen ? (
+              <div className="mt-1 space-y-1 border-l border-slate-100 pl-3">
+                {MASTER_ITEMS.map((item) => {
+                  const active = pathname === item.href;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                        active
+                          ? "bg-epaud-sky text-epaud-blue"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
         </nav>
 
         <div className="border-t border-slate-100 p-4">
