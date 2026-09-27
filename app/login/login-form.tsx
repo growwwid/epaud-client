@@ -3,16 +3,27 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { postJson } from "@/components/api";
 import { AuthCard } from "@/components/auth-card";
 import { PasswordField, TextField } from "@/components/form-fields";
 import { ArrowRightIcon, CheckIcon, GoogleIcon, UserIcon } from "@/components/icons";
+import { savePendingRegistration } from "@/components/registration";
 
 export function LoginForm({ registered = false }: { registered?: boolean }) {
   const router = useRouter();
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    const target = event.target as HTMLElement;
+    if (target.tagName === "TEXTAREA") return;
+    event.preventDefault();
+    event.currentTarget.requestSubmit();
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const identifier = String(data.get("identifier") ?? "").trim();
@@ -24,18 +35,39 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
     }
 
     setError(null);
+    setSubmitting(true);
 
-    // Belum ada backend: simpan sesi tiruan lalu arahkan ke panel.
-    try {
-      window.sessionStorage.setItem(
-        "epaud:session",
-        JSON.stringify({ identifier, at: Date.now() }),
-      );
-    } catch {
-      // abaikan bila storage tidak tersedia
+    const isEmail = identifier.includes("@");
+    const result = await postJson("/api/auth/login", {
+      ...(isEmail ? { email: identifier } : { phone: identifier }),
+      password,
+      remember,
+    });
+
+    if (result.ok) {
+      router.push("/panel");
+      router.refresh();
+      return;
     }
 
-    router.push("/panel");
+    setSubmitting(false);
+
+    const details = result.error.details as
+      | { sekolah_id?: string; kanal?: string; tujuan?: string }
+      | null;
+    // Sekolah belum aktif: arahkan ke verifikasi OTP.
+    if (result.error.code === "school_not_active" && details?.sekolah_id) {
+      savePendingRegistration({
+        schoolId: details.sekolah_id,
+        kanal: details.kanal ?? "email",
+        tujuan: details.tujuan ?? identifier,
+        expiresIn: 180,
+      });
+      router.push("/register/verifikasi");
+      return;
+    }
+
+    setError(result.error.message);
   }
 
   return (
@@ -58,7 +90,12 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
         </p>
       ) : null}
 
-      <form className="mt-7 space-y-5 sm:mt-9" onSubmit={handleSubmit} noValidate>
+      <form
+        className="mt-7 space-y-5 sm:mt-9"
+        onSubmit={handleSubmit}
+        onKeyDown={handleKeyDown}
+        noValidate
+      >
         <TextField
           id="identifier"
           name="identifier"
@@ -109,9 +146,10 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
 
         <button
           type="submit"
-          className="group flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-epaud-blue px-6 text-base font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/30 active:scale-[0.99]"
+          disabled={submitting}
+          className="group flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-epaud-blue px-6 text-base font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/30 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
-          Masuk
+          {submitting ? "Memproses..." : "Masuk"}
           <ArrowRightIcon className="size-5 transition-transform group-hover:translate-x-0.5" />
         </button>
       </form>
