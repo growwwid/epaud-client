@@ -1,19 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoLockup } from "@/components/logo-lockup";
+import { getJson, type MeResult } from "@/components/api";
 import {
   BookIcon,
   BuildingIcon,
+  CalendarIcon,
   ChevronDownIcon,
   GridIcon,
   HashIcon,
   HomeIcon,
   MenuIcon,
   SearchIcon,
+  StarIcon,
   UserIcon,
   UsersIcon,
   XIcon,
@@ -21,7 +24,7 @@ import {
 import { NotificationMenu } from "./notification-menu";
 import { ProfileMenu } from "./profile-menu";
 
-const NAV_ITEMS = [{ label: "Dashboard", href: "/panel", icon: HomeIcon }];
+const DASHBOARD_ITEM = { label: "Dashboard", href: "/panel", icon: HomeIcon };
 
 const MASTER_ITEMS = [
   { label: "Tahun Ajaran", href: "/panel/tahun-ajaran", icon: HashIcon },
@@ -32,10 +35,33 @@ const MASTER_ITEMS = [
   { label: "Kelas", href: "/panel/kelas", icon: GridIcon },
 ];
 
+const AGENDA_ITEMS = [
+  { label: "Event", href: "/panel/event", icon: StarIcon },
+  { label: "Kalender", href: "/panel/kalender", icon: CalendarIcon },
+];
+
 export function PanelShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [masterOpen, setMasterOpen] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getJson<MeResult>("/api/auth/me").then((res) => {
+      if (active && res.ok) setRole(res.data.role);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const isManage = role === "kepala_sekolah" || role === "admin_sekolah";
+  const isGuru = role === "guru";
+  const isOrtu = role === "orang_tua";
+  const showDashboard = !isOrtu;
+  const showMaster = isManage;
+  const showAgenda = isManage || isGuru || isOrtu;
 
   return (
     <div className="min-h-screen bg-slate-50 font-epaud text-slate-800">
@@ -68,66 +94,57 @@ export function PanelShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="mt-2 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                  active
-                    ? "bg-epaud-sky text-epaud-blue"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
+          {showDashboard ? (
+            <SidebarLink
+              item={DASHBOARD_ITEM}
+              active={pathname === DASHBOARD_ITEM.href}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
+          {showMaster ? (
+            <div>
+              <button
+                type="button"
+                onClick={() => setMasterOpen((value) => !value)}
+                aria-expanded={masterOpen}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
               >
-                <Icon className="size-5 shrink-0" />
-                {item.label}
-              </Link>
-            );
-          })}
+                <BookIcon className="size-5 shrink-0" />
+                Master Data
+                <ChevronDownIcon
+                  className={`ml-auto size-4 text-slate-400 transition-transform ${
+                    masterOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
 
-          <div>
-            <button
-              type="button"
-              onClick={() => setMasterOpen((value) => !value)}
-              aria-expanded={masterOpen}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-            >
-              <BookIcon className="size-5 shrink-0" />
-              Master Data
-              <ChevronDownIcon
-                className={`ml-auto size-4 text-slate-400 transition-transform ${
-                  masterOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {masterOpen ? (
-              <div className="mt-1 space-y-1 border-l border-slate-100 pl-3">
-                {MASTER_ITEMS.map((item) => {
-                  const active = pathname === item.href;
-                  const Icon = item.icon;
-                  return (
-                    <Link
+              {masterOpen ? (
+                <div className="mt-1 space-y-1 border-l border-slate-100 pl-3">
+                  {MASTER_ITEMS.map((item) => (
+                    <SidebarLink
                       key={item.label}
-                      href={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                        active
-                          ? "bg-epaud-sky text-epaud-blue"
-                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                      }`}
-                    >
-                      <Icon className="size-4 shrink-0" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
+                      item={item}
+                      indent
+                      active={pathname === item.href}
+                      onNavigate={() => setSidebarOpen(false)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {showAgenda
+            ? AGENDA_ITEMS.map((item) => (
+                <SidebarLink
+                  key={item.label}
+                  item={item}
+                  active={pathname === item.href}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+              ))
+            : null}
         </nav>
 
         <div className="border-t border-slate-100 p-4">
@@ -178,5 +195,43 @@ export function PanelShell({ children }: { children: ReactNode }) {
         </footer>
       </div>
     </div>
+  );
+}
+
+type NavItem = {
+  label: string;
+  href: string;
+  icon: (props: { className?: string }) => ReactNode;
+};
+
+function SidebarLink({
+  item,
+  active,
+  indent = false,
+  onNavigate,
+}: {
+  item: NavItem;
+  active: boolean;
+  indent?: boolean;
+  onNavigate: () => void;
+}) {
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      className={`flex items-center gap-3 rounded-xl text-sm font-semibold transition ${
+        indent ? "px-3 py-2" : "px-3 py-2.5"
+      } ${
+        active
+          ? "bg-epaud-sky text-epaud-blue"
+          : indent
+            ? "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+      }`}
+    >
+      <Icon className={indent ? "size-4 shrink-0" : "size-5 shrink-0"} />
+      {item.label}
+    </Link>
   );
 }

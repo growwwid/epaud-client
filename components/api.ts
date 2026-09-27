@@ -91,6 +91,38 @@ export type OrangRef = {
   Nama?: string;
 };
 
+export type EventKategori =
+  | "kegiatan"
+  | "libur"
+  | "rapat"
+  | "lainnya"
+  | string;
+
+/**
+ * Event sekolah. Unik per sekolah (tenant-scoped). Backend belum tersedia;
+ * kontrak usulan: GET/POST /api/v1/event, PATCH/DELETE /api/v1/event/{id}.
+ */
+export type Event = {
+  id: string;
+  judul: string;
+  deskripsi?: string;
+  kategori?: EventKategori;
+  lokasi?: string;
+  tanggal_mulai: string;
+  tanggal_selesai?: string | null;
+  all_day?: boolean;
+  created_by?: string;
+  created_at?: string;
+};
+
+/** Kontrak usulan GET /api/v1/dashboard/stats. */
+export type DashboardStats = {
+  jumlah_guru: number;
+  jumlah_murid: number;
+  total_saldo: number;
+  jumlah_murid_diajar?: number;
+};
+
 export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error: ApiError };
