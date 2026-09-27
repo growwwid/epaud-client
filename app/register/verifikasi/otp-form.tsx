@@ -4,16 +4,18 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthCard } from "@/components/auth-card";
+import { postJson } from "@/components/api";
 import { ArrowRightIcon } from "@/components/icons";
 import {
   clearPendingRegistration,
   maskContact,
   PENDING_REGISTRATION_KEY,
+  savePendingRegistration,
   type PendingRegistration,
 } from "@/components/registration";
 
 const OTP_LENGTH = 4;
-const OTP_TTL = 120; // 2 menit
+const OTP_TTL = 180; // 3 menit (default; ditimpa dari response API)
 
 function subscribe() {
   return () => {};
@@ -55,8 +57,11 @@ export function OtpForm() {
   const [secondsLeft, setSecondsLeft] = useState(OTP_TTL);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const completedRef = useRef(false);
+  const ttlInitialised = useRef(false);
 
   const hydrated = useSyncExternalStore(
     subscribe,
@@ -78,7 +83,7 @@ export function OtpForm() {
     }
   }, [rawPending]);
 
-  const contact = pending?.contact ?? null;
+  const target = pending?.tujuan ?? null;
 
   // Wajib ada data pendaftaran; kalau tidak, kembali ke halaman daftar.
   useEffect(() => {
@@ -87,7 +92,15 @@ export function OtpForm() {
     }
   }, [hydrated, pending, router]);
 
-  // Hitung mundur masa berlaku OTP (2 menit).
+  // Sinkronkan masa berlaku OTP dari response API.
+  useEffect(() => {
+    if (!ttlInitialised.current && pending?.expiresIn) {
+      ttlInitialised.current = true;
+      setSecondsLeft(pending.expiresIn);
+    }
+  }, [pending]);
+
+  // Hitung mundur masa berlaku OTP.
   useEffect(() => {
     if (secondsLeft <= 0) return;
     const timer = window.setTimeout(
@@ -152,15 +165,39 @@ export function OtpForm() {
     focusInput(Math.min(pasted.length, OTP_LENGTH - 1));
   }
 
-  function handleResend() {
-    setDigits(Array.from({ length: OTP_LENGTH }, () => ""));
-    setSecondsLeft(OTP_TTL);
+  async function handleResend() {
+    if (!pending?.schoolId) return;
+    setResending(true);
     setError(null);
+
+    const result = await postJson<{
+      sekolah_id: string;
+      kanal: string;
+      tujuan: string;
+      expires_in: number;
+    }>("/api/auth/resend", { sekolah_id: pending.schoolId });
+
+    setResending(false);
+
+    if (!result.ok) {
+      setError(result.error.message);
+      return;
+    }
+
+    savePendingRegistration({
+      schoolId: result.data.sekolah_id,
+      kanal: result.data.kanal,
+      tujuan: result.data.tujuan,
+      expiresIn: result.data.expires_in,
+    });
+    setDigits(Array.from({ length: OTP_LENGTH }, () => ""));
+    setSecondsLeft(result.data.expires_in || OTP_TTL);
+    ttlInitialised.current = true;
     setInfo("Kode OTP baru telah dikirim.");
     focusInput(0);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const code = digits.join("");
 
@@ -172,9 +209,24 @@ export function OtpForm() {
       setError("Masukkan 4 digit kode OTP.");
       return;
     }
+    if (!pending?.schoolId) {
+      setError("Data pendaftaran tidak ditemukan. Silakan daftar ulang.");
+      return;
+    }
 
     setError(null);
-    // Belum ada backend: kode 4 digit apa pun dianggap valid.
+    setSubmitting(true);
+    const result = await postJson("/api/auth/verify", {
+      sekolah_id: pending.schoolId,
+      kode: code,
+    });
+    setSubmitting(false);
+
+    if (!result.ok) {
+      setError(result.error.message);
+      return;
+    }
+
     completedRef.current = true;
     clearPendingRegistration();
     router.push("/login?registered=1");
@@ -189,7 +241,7 @@ export function OtpForm() {
         <p className="mt-2.5 text-sm text-slate-500 sm:text-base">
           Kode 4 digit telah dikirim ke{" "}
           <span className="font-semibold text-epaud-navy">
-            {contact ? maskContact(contact) : "email/WhatsApp Anda"}
+            {target ? maskContact(target) : "email/WhatsApp Anda"}
           </span>
           .
         </p>
@@ -239,10 +291,10 @@ export function OtpForm() {
           <button
             type="button"
             onClick={handleResend}
-            disabled={!expired}
+            disabled={!expired || resending}
             className="font-semibold text-epaud-blue transition hover:text-epaud-blue-dark hover:underline disabled:cursor-not-allowed disabled:text-slate-300 disabled:no-underline"
           >
-            Kirim ulang kode
+            {resending ? "Mengirim..." : "Kirim ulang kode"}
           </button>
         </div>
 
@@ -266,10 +318,10 @@ export function OtpForm() {
 
         <button
           type="submit"
-          disabled={expired}
+          disabled={expired || submitting}
           className="group mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-epaud-blue px-6 text-base font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/30 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
-          Verifikasi
+          {submitting ? "Memverifikasi..." : "Verifikasi"}
           <ArrowRightIcon className="size-5 transition-transform group-hover:translate-x-0.5" />
         </button>
       </form>
