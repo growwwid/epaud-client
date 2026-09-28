@@ -64,8 +64,10 @@ export function PanelShell({ children }: { children: ReactNode }) {
       if (res.data.nama_sekolah) {
         document.title = res.data.nama_sekolah;
       }
-      const profilRes = await getJson<SekolahProfil>("/api/profil-sekolah");
-      if (active && profilRes.ok) setProfil(profilRes.data);
+      if (res.data.role !== "superadmin") {
+        const profilRes = await getJson<SekolahProfil>("/api/profil-sekolah");
+        if (active && profilRes.ok) setProfil(profilRes.data);
+      }
     }
     load();
     return () => {
