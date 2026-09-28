@@ -20,6 +20,7 @@ import {
 } from "@/components/icons";
 import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
 import { PasswordInput } from "@/components/password-input";
+import { PhotoInput } from "@/components/photo-input";
 
 const JENIS_LABEL: Record<string, string> = {
   guru_kelas: "Guru Kelas",
@@ -495,6 +496,9 @@ function GuruFormModal({
         </Field>
 
         <OptionalFields>
+          <Field label="Foto">
+            <PhotoInput name="foto" initial={item?.foto ?? ""} shape="circle" />
+          </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             {editing ? null : (
               <Field label="NIK">

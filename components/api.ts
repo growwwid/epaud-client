@@ -16,6 +16,7 @@ export type MeResult = {
   nama_sekolah: string;
   role: string;
   must_change_password: boolean;
+  foto?: string;
 };
 
 export type Guru = {
@@ -26,6 +27,7 @@ export type Guru = {
   jenis: "guru_kelas" | "guru_pendamping" | string;
   phone?: string;
   email?: string;
+  foto?: string;
   is_active: boolean;
 };
 
@@ -37,6 +39,7 @@ export type Murid = {
   tanggal_lahir?: string | null;
   jenis_kelamin?: string;
   status: string;
+  foto?: string;
 };
 
 export type TahunAjaran = {
@@ -62,6 +65,7 @@ export type AkunSekolah = {
   email?: string;
   phone?: string;
   role: string;
+  foto?: string;
   is_active: boolean;
   must_change_password: boolean;
 };
