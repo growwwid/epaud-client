@@ -21,6 +21,7 @@ import {
   XIcon,
 } from "@/components/icons";
 import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
+import { PasswordInput } from "@/components/password-input";
 
 type AnakRow = {
   id: string;
@@ -793,11 +794,11 @@ function CreateOrtuModal({
             />
           </Field>
           <Field label="Password">
-            <input
+            <PasswordInput
               name="password"
-              type="text"
               className={inputClass}
               placeholder="Kosongkan untuk password default"
+              hint="Kosongkan untuk memakai password default (default123)."
             />
           </Field>
         </OptionalFields>

@@ -19,6 +19,7 @@ import {
   UserIcon,
 } from "@/components/icons";
 import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
+import { PasswordInput } from "@/components/password-input";
 
 const JENIS_LABEL: Record<string, string> = {
   guru_kelas: "Guru Kelas",
@@ -529,14 +530,18 @@ function GuruFormModal({
             </Field>
           </div>
           <Field label="Password">
-            <input
+            <PasswordInput
               name="password"
-              type="text"
               className={inputClass}
               placeholder={
                 editing
                   ? "Kosongkan bila tidak diubah"
                   : "Kosongkan untuk password default"
+              }
+              hint={
+                editing
+                  ? undefined
+                  : "Kosongkan untuk memakai password default (default123)."
               }
             />
           </Field>
