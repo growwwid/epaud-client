@@ -85,10 +85,15 @@ export default function SekolahPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    const nama = String(data.get("nama") ?? "").trim();
+    if (!nama) {
+      setError("Nama sekolah wajib diisi.");
+      return;
+    }
     setSaving(true);
     setError(null);
     const res = await patchJson<SekolahProfil>("/api/profil-sekolah", {
-      nama: String(data.get("nama") ?? "").trim(),
+      nama,
       npsn: String(data.get("npsn") ?? "").trim(),
       tipe: String(data.get("tipe") ?? "").trim(),
       alamat: String(data.get("alamat") ?? "").trim(),
