@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { XIcon } from "./icons";
+import { useState, type ReactNode } from "react";
+import { ChevronDownIcon, XIcon } from "./icons";
 
 export const inputClass =
   "h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10";
@@ -56,6 +56,32 @@ export function PageHeader({
         </h1>
         <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * OptionalFields menyembunyikan input opsional di balik tombol "Tampilkan
+ * informasi lainnya" agar form hanya menampilkan field wajib secara default.
+ */
+export function OptionalFields({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/50">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between px-4 py-3 text-[13px] font-semibold text-slate-600 transition hover:text-epaud-blue"
+      >
+        Tampilkan informasi lainnya
+        <ChevronDownIcon
+          className={`size-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open ? (
+        <div className="space-y-4 border-t border-slate-100 p-4">{children}</div>
+      ) : null}
     </div>
   );
 }

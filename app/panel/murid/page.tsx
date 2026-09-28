@@ -20,6 +20,7 @@ import {
   UsersIcon,
   XIcon,
 } from "@/components/icons";
+import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
 
 type AnakRow = {
   id: string;
@@ -88,18 +89,6 @@ function initials(name: string) {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase() ?? "")
       .join("") || "?"
-  );
-}
-
-const inputClass =
-  "h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10";
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="pl-1 text-[13px] font-semibold text-slate-600">{label}</span>
-      {children}
-    </label>
   );
 }
 
@@ -603,46 +592,6 @@ export default function DataAnakPage() {
   );
 }
 
-function Modal({
-  title,
-  subtitle,
-  onClose,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Tutup"
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-      />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-extrabold text-epaud-navy">{title}</h2>
-            {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup"
-            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100"
-          >
-            <XIcon className="size-5" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function MuridFormModal({
   item,
   onClose,
@@ -699,42 +648,44 @@ function MuridFormModal({
             defaultValue={item?.nama ?? ""}
           />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {editing ? null : (
-            <Field label="NIK">
-              <input name="nik" className={inputClass} placeholder="NIK anak" />
+        <OptionalFields>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {editing ? null : (
+              <Field label="NIK">
+                <input name="nik" className={inputClass} placeholder="NIK anak" />
+              </Field>
+            )}
+            <Field label="NISN">
+              <input
+                name="nisn"
+                className={inputClass}
+                placeholder="NISN"
+                defaultValue={item?.nisn ?? ""}
+              />
             </Field>
-          )}
-          <Field label="NISN">
-            <input
-              name="nisn"
-              className={inputClass}
-              placeholder="NISN"
-              defaultValue={item?.nisn ?? ""}
-            />
-          </Field>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Tanggal Lahir">
-            <input
-              name="tanggal_lahir"
-              type="date"
-              className={inputClass}
-              defaultValue={item?.tanggalLahirRaw ?? ""}
-            />
-          </Field>
-          <Field label="Jenis Kelamin">
-            <select
-              name="jenis_kelamin"
-              defaultValue={item?.jenisKelaminRaw ?? ""}
-              className={inputClass}
-            >
-              <option value="">Belum dipilih</option>
-              <option value="laki_laki">Laki-laki</option>
-              <option value="perempuan">Perempuan</option>
-            </select>
-          </Field>
-        </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Tanggal Lahir">
+              <input
+                name="tanggal_lahir"
+                type="date"
+                className={inputClass}
+                defaultValue={item?.tanggalLahirRaw ?? ""}
+              />
+            </Field>
+            <Field label="Jenis Kelamin">
+              <select
+                name="jenis_kelamin"
+                defaultValue={item?.jenisKelaminRaw ?? ""}
+                className={inputClass}
+              >
+                <option value="">Belum dipilih</option>
+                <option value="laki_laki">Laki-laki</option>
+                <option value="perempuan">Perempuan</option>
+              </select>
+            </Field>
+          </div>
+        </OptionalFields>
 
         {error ? (
           <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600">
@@ -821,33 +772,35 @@ function CreateOrtuModal({
         <Field label="Nama Lengkap *">
           <input name="nama" className={inputClass} placeholder="Nama orang tua/wali" />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="NIK">
-            <input name="nik" className={inputClass} placeholder="NIK orang tua" />
+        <OptionalFields>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="NIK">
+              <input name="nik" className={inputClass} placeholder="NIK orang tua" />
+            </Field>
+            <Field label="No. HP">
+              <input name="phone" className={inputClass} placeholder="08xxxxxxxxxx" />
+            </Field>
+          </div>
+          <Field label="Email">
+            <input name="email" type="email" className={inputClass} placeholder="email@contoh.id" />
           </Field>
-          <Field label="No. HP">
-            <input name="phone" className={inputClass} placeholder="08xxxxxxxxxx" />
+          <Field label="NIK Anak">
+            <textarea
+              name="anak_nik"
+              rows={3}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10"
+              placeholder="Satu NIK per baris (harus sudah terdaftar sebagai murid)"
+            />
           </Field>
-        </div>
-        <Field label="Email">
-          <input name="email" type="email" className={inputClass} placeholder="email@contoh.id" />
-        </Field>
-        <Field label="NIK Anak">
-          <textarea
-            name="anak_nik"
-            rows={3}
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10"
-            placeholder="Satu NIK per baris (harus sudah terdaftar sebagai murid)"
-          />
-        </Field>
-        <Field label="Password">
-          <input
-            name="password"
-            type="text"
-            className={inputClass}
-            placeholder="Kosongkan untuk password default"
-          />
-        </Field>
+          <Field label="Password">
+            <input
+              name="password"
+              type="text"
+              className={inputClass}
+              placeholder="Kosongkan untuk password default"
+            />
+          </Field>
+        </OptionalFields>
 
         {error ? (
           <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600">
