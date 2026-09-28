@@ -163,6 +163,15 @@ export type RingkasanTabungan = {
 
 export type ListMeta = { page: number; size: number; total: number };
 
+export type SekolahProfil = {
+  id: string;
+  nama: string;
+  npsn: string;
+  tipe: string;
+  alamat: string;
+  logo?: string;
+};
+
 export type TabunganRekap = {
   data: SaldoMurid[];
   meta: ListMeta;
