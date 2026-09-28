@@ -167,6 +167,23 @@ export type RingkasanTabungan = {
 
 export type ListMeta = { page: number; size: number; total: number };
 
+export type KalenderMuridRef = { id: string; nama: string; kelas?: string };
+
+export type KalenderItem = {
+  tipe: string;
+  id: string;
+  judul: string;
+  deskripsi?: string;
+  lokasi?: string;
+  mulai: string;
+  selesai?: string;
+  all_day: boolean;
+  zona_waktu?: string;
+  kategori?: string;
+  cuti_bersama?: boolean;
+  murid?: KalenderMuridRef;
+};
+
 export type SekolahProfil = {
   id: string;
   nama: string;
