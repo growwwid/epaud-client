@@ -8,9 +8,11 @@ import {
   getJson,
   patchJson,
   postJson,
+  putJson,
   type AkunResult,
   type AkunSekolah,
   type ApiResult,
+  type OrangRef,
 } from "@/components/api";
 import {
   buttonGhost,
@@ -50,6 +52,7 @@ export function AkunSekolahCrud({
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AkunSekolah | null>(null);
+  const [anakTarget, setAnakTarget] = useState<AkunSekolah | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const apply = useCallback(
@@ -188,6 +191,15 @@ export function AkunSekolahCrud({
                     </td>
                     <td className="rounded-r-xl px-4 py-3">
                       <div className="flex justify-end gap-2">
+                        {isOrtu ? (
+                          <button
+                            type="button"
+                            onClick={() => setAnakTarget(item)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                          >
+                            Kelola Anak
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => setEditing(item)}
@@ -241,7 +253,145 @@ export function AkunSekolahCrud({
           }}
         />
       ) : null}
+
+      {anakTarget ? (
+        <AnakModal
+          akun={anakTarget}
+          onClose={() => setAnakTarget(null)}
+          onSaved={(nama) => {
+            setAnakTarget(null);
+            setNotice(`Tautan anak "${nama}" berhasil diperbarui.`);
+          }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function anakNama(anak: OrangRef) {
+  return anak.nama ?? anak.Nama ?? "Tanpa nama";
+}
+
+function anakNik(anak: OrangRef) {
+  return anak.nik ?? anak.NIK ?? "";
+}
+
+function AnakModal({
+  akun,
+  onClose,
+  onSaved,
+}: {
+  akun: AkunSekolah;
+  onClose: () => void;
+  onSaved: (nama: string) => void;
+}) {
+  const [items, setItems] = useState<OrangRef[]>([]);
+  const [nikText, setNikText] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getJson<OrangRef[]>(`/api/orang-tua/${akun.akun_id}/anak`).then((res) => {
+      if (!active) return;
+      if (res.ok) {
+        const list = Array.isArray(res.data) ? res.data : [];
+        setItems(list);
+        setNikText(list.map(anakNik).filter(Boolean).join("\n"));
+      } else {
+        setError(res.error.message);
+      }
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [akun.akun_id]);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const anak_nik = nikText
+      .split(/[\n,]/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    setError(null);
+    setSubmitting(true);
+    const res = await putJson<OrangRef[]>(`/api/orang-tua/${akun.akun_id}/anak`, {
+      anak_nik,
+    });
+    setSubmitting(false);
+
+    if (!res.ok) {
+      setError(res.error.message);
+      return;
+    }
+
+    onSaved(akun.nama);
+  }
+
+  return (
+    <Modal
+      title="Kelola Anak"
+      subtitle={`Tautan anak untuk akun ${akun.nama} (berdasarkan NIK murid).`}
+      onClose={onClose}
+    >
+      <div className="mt-5 space-y-4">
+        <div>
+          <span className="pl-1 text-[13px] font-semibold text-slate-600">
+            Anak tertaut saat ini
+          </span>
+          {loading ? (
+            <p className="mt-2 text-sm text-slate-400">Memuat data...</p>
+          ) : items.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-400">Belum ada anak tertaut.</p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {items.map((anak, index) => (
+                <li
+                  key={`${anakNik(anak)}-${index}`}
+                  className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5 text-sm"
+                >
+                  <span className="font-semibold text-slate-700">
+                    {anakNama(anak)}
+                  </span>
+                  <span className="text-slate-400">{anakNik(anak) || "—"}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+          <Field label="NIK Anak (ganti seluruh tautan)">
+            <textarea
+              name="anak_nik"
+              rows={4}
+              value={nikText}
+              onChange={(event) => setNikText(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10"
+              placeholder="Satu NIK per baris (harus sudah terdaftar sebagai murid)"
+            />
+          </Field>
+
+          {error ? <ErrorText>{error}</ErrorText> : null}
+
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onClose} className={buttonGhost}>
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || loading}
+              className={buttonPrimary}
+            >
+              {submitting ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </Modal>
   );
 }
 

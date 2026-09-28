@@ -9,7 +9,13 @@ import { PasswordField, TextField } from "@/components/form-fields";
 import { ArrowRightIcon, CheckIcon, GoogleIcon, UserIcon } from "@/components/icons";
 import { savePendingRegistration } from "@/components/registration";
 
-export function LoginForm({ registered = false }: { registered?: boolean }) {
+export function LoginForm({
+  registered = false,
+  reset = false,
+}: {
+  registered?: boolean;
+  reset?: boolean;
+}) {
   const router = useRouter();
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +96,15 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
         </p>
       ) : null}
 
+      {reset ? (
+        <p
+          role="status"
+          className="mt-6 rounded-xl bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-700"
+        >
+          Password berhasil diubah. Silakan masuk dengan password baru.
+        </p>
+      ) : null}
+
       <form
         className="mt-7 space-y-5 sm:mt-9"
         onSubmit={handleSubmit}
@@ -127,12 +142,12 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
             </span>
             Ingat saya
           </label>
-          <a
-            href="#"
+          <Link
+            href="/lupa-password"
             className="text-sm font-semibold text-epaud-blue transition hover:text-epaud-blue-dark hover:underline"
           >
             Lupa password?
-          </a>
+          </Link>
         </div>
 
         {error ? (
@@ -175,6 +190,16 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
           className="font-semibold text-epaud-blue transition hover:text-epaud-blue-dark hover:underline"
         >
           Daftarkan sekolah Anda
+        </Link>
+      </p>
+
+      <p className="mt-3 text-center text-sm text-slate-500">
+        Mengalami kendala?{" "}
+        <Link
+          href="/kontak"
+          className="font-semibold text-epaud-blue transition hover:text-epaud-blue-dark hover:underline"
+        >
+          Hubungi kami
         </Link>
       </p>
     </AuthCard>

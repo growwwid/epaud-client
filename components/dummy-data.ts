@@ -1,7 +1,7 @@
 import type { Event } from "./api";
 
 // ponytail: data contoh. Ganti ke GET /api/event & GET /api/v1/dashboard/stats
-// begitu backend event/tabungan tersedia. Tanggal relatif ke hari ini agar
+// begitu backend event/dashboard tersedia. Tanggal relatif ke hari ini agar
 // muncul di kalender.
 
 function day(offset: number, hour = 0) {
@@ -71,9 +71,3 @@ export const DUMMY_EVENTS: Event[] = [
     all_day: true,
   },
 ];
-
-// ponytail: total saldo dummy; butuh endpoint tabungan (F4) untuk angka nyata.
-export const DUMMY_TOTAL_SALDO = 7_450_000;
-
-// ponytail: angka dummy; butuh GET /api/v1/dashboard/stats (jumlah_murid_diajar).
-export const DUMMY_MURID_DIAJAR = 18;

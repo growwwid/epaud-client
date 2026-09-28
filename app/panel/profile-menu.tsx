@@ -4,6 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getJson, postJson, type MeResult } from "@/components/api";
 import {
+  buttonGhost,
+  buttonPrimary,
+  ErrorText,
+  Field,
+  inputClass,
+  Modal,
+  Notice,
+} from "@/components/crud-ui";
+import {
   ChevronDownIcon,
   FileIcon,
   LogOutIcon,
@@ -32,6 +41,7 @@ function initials(name: string) {
 export function ProfileMenu() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [me, setMe] = useState<MeResult | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -130,11 +140,14 @@ export function ProfileMenu() {
 
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              setReportOpen(true);
+            }}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             <FileIcon className="size-5 text-slate-400" />
-            Report
+            Laporkan Kendala
           </button>
 
           <button
@@ -147,6 +160,99 @@ export function ProfileMenu() {
           </button>
         </div>
       ) : null}
+
+      {reportOpen ? <ReportModal onClose={() => setReportOpen(false)} /> : null}
     </div>
+  );
+}
+
+function ReportModal({ onClose }: { onClose: () => void }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const kategori = String(data.get("kategori") ?? "").trim();
+    const judul = String(data.get("judul") ?? "").trim();
+    const deskripsi = String(data.get("deskripsi") ?? "").trim();
+
+    if (!judul || !deskripsi) {
+      setError("Judul dan deskripsi wajib diisi.");
+      return;
+    }
+
+    setError(null);
+    setSubmitting(true);
+    const res = await postJson("/api/tiket-kendala/saya", {
+      kategori,
+      judul,
+      deskripsi,
+    });
+    setSubmitting(false);
+
+    if (!res.ok) {
+      setError(res.error.message);
+      return;
+    }
+    setSent(true);
+  }
+
+  return (
+    <Modal
+      title="Laporkan Kendala"
+      subtitle="Laporan dikirim ke tim superadmin ePAUD."
+      onClose={onClose}
+    >
+      {sent ? (
+        <div className="mt-5 space-y-4">
+          <Notice>Laporan Anda telah terkirim. Terima kasih.</Notice>
+          <div className="flex justify-end">
+            <button type="button" onClick={onClose} className={buttonPrimary}>
+              Selesai
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form className="mt-5 space-y-4" onSubmit={handleSubmit} noValidate>
+          <Field label="Kategori">
+            <select name="kategori" defaultValue="teknis" className={inputClass}>
+              <option value="verifikasi">Verifikasi / OTP</option>
+              <option value="login">Tidak bisa login</option>
+              <option value="data">Data sekolah/murid salah</option>
+              <option value="teknis">Kendala teknis</option>
+              <option value="lainnya">Lainnya</option>
+            </select>
+          </Field>
+          <Field label="Judul *">
+            <input
+              name="judul"
+              className={inputClass}
+              placeholder="Ringkasan kendala"
+            />
+          </Field>
+          <Field label="Deskripsi *">
+            <textarea
+              name="deskripsi"
+              rows={4}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10"
+              placeholder="Jelaskan kendala yang Anda alami..."
+            />
+          </Field>
+
+          {error ? <ErrorText>{error}</ErrorText> : null}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} className={buttonGhost}>
+              Batal
+            </button>
+            <button type="submit" disabled={submitting} className={buttonPrimary}>
+              {submitting ? "Mengirim..." : "Kirim"}
+            </button>
+          </div>
+        </form>
+      )}
+    </Modal>
   );
 }

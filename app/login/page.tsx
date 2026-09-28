@@ -18,6 +18,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
 
   const searchParams = await props.searchParams;
   const registered = searchParams.registered === "1";
+  const reset = searchParams.reset === "1";
 
   return (
     <AuthShell
@@ -30,7 +31,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
       }
       description="Kelola data, pantau perkembangan, dan wujudkan pendidikan PAUD yang lebih baik."
     >
-      <LoginForm registered={registered} />
+      <LoginForm registered={registered} reset={reset} />
     </AuthShell>
   );
 }
