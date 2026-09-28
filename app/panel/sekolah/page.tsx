@@ -19,19 +19,12 @@ import {
   Panel,
 } from "@/components/crud-ui";
 import { BuildingIcon } from "@/components/icons";
+import { uploadImage } from "@/lib/upload";
+import { toast } from "sonner";
 
 const TIPE_OPTIONS = ["TK", "RA", "SPS", "KB", "TPA"];
 
 const MAX_LOGO_BYTES = 1_200_000;
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function SekolahPage() {
   const router = useRouter();
@@ -42,6 +35,7 @@ export default function SekolahPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [logo, setLogo] = useState<string>("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -80,7 +74,15 @@ export default function SekolahPage() {
       return;
     }
     setError(null);
-    setLogo(await readFileAsDataUrl(file));
+    setUploadingLogo(true);
+    try {
+      setLogo(await uploadImage(file, "logo"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal mengunggah logo.");
+    } finally {
+      setUploadingLogo(false);
+      event.target.value = "";
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -173,9 +175,12 @@ export default function SekolahPage() {
                 type="file"
                 accept="image/*"
                 onChange={handleLogo}
-                className="block text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-epaud-sky file:px-4 file:py-2 file:text-sm file:font-semibold file:text-epaud-blue"
+                disabled={uploadingLogo}
+                className="block text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-epaud-sky file:px-4 file:py-2 file:text-sm file:font-semibold file:text-epaud-blue disabled:opacity-50"
               />
-              {logo ? (
+              {uploadingLogo ? (
+                <p className="text-xs text-slate-400">Mengunggah…</p>
+              ) : logo ? (
                 <button
                   type="button"
                   onClick={() => setLogo("")}

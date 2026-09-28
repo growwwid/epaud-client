@@ -2,21 +2,13 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { uploadImage } from "@/lib/upload";
 
 const MAX_FOTO_BYTES = 1_200_000;
 
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
 /**
- * Input foto profil (uncontrolled via hidden input `name`). Nilai berupa data
- * URL base64; kosong berarti tanpa foto.
+ * Input foto profil. File diunggah ke object storage (presigned), lalu URL
+ * publiknya disimpan pada hidden input `name`.
  */
 export function PhotoInput({
   name,
@@ -30,6 +22,7 @@ export function PhotoInput({
   shape?: "square" | "circle";
 }) {
   const [foto, setFoto] = useState(initial);
+  const [uploading, setUploading] = useState(false);
 
   async function onFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -38,7 +31,15 @@ export function PhotoInput({
       toast.error("Ukuran foto terlalu besar (maks ~1 MB).");
       return;
     }
-    setFoto(await readAsDataUrl(file));
+    setUploading(true);
+    try {
+      setFoto(await uploadImage(file, "foto"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal mengunggah foto.");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
   }
 
   return (
@@ -61,9 +62,12 @@ export function PhotoInput({
             type="file"
             accept="image/*"
             onChange={onFile}
-            className="block text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-epaud-sky file:px-4 file:py-2 file:text-sm file:font-semibold file:text-epaud-blue"
+            disabled={uploading}
+            className="block text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-epaud-sky file:px-4 file:py-2 file:text-sm file:font-semibold file:text-epaud-blue disabled:opacity-50"
           />
-          {foto ? (
+          {uploading ? (
+            <p className="text-xs text-slate-400">Mengunggah…</p>
+          ) : foto ? (
             <button
               type="button"
               onClick={() => setFoto("")}
