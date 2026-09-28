@@ -14,8 +14,14 @@ import {
   type TransaksiList,
 } from "@/components/api";
 import { downloadCsv } from "@/components/csv";
+import { CatatTransaksiModal } from "@/components/catat-transaksi-modal";
 import { ErrorText } from "@/components/crud-ui";
-import { ArrowRightIcon, ChevronDownIcon, DownloadIcon } from "@/components/icons";
+import {
+  ArrowRightIcon,
+  ChevronDownIcon,
+  DownloadIcon,
+  PlusIcon,
+} from "@/components/icons";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
@@ -61,6 +67,8 @@ export function DetailTabungan({
   const [loadingAnak, setLoadingAnak] = useState(true);
   const [loadingTrx, setLoadingTrx] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [catatOpen, setCatatOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
@@ -69,6 +77,8 @@ export function DetailTabungan({
   const perPage = 20;
 
   const isOrtu = role === "orang_tua";
+  const canManage = role === "kepala_sekolah" || role === "admin_sekolah";
+  const bisaCatat = canManage && anak?.status === "aktif";
   const base = muridId
     ? isOrtu
       ? sekolahId
@@ -129,7 +139,7 @@ export function DetailTabungan({
     return () => {
       active = false;
     };
-  }, [router, muridId, sekolahId]);
+  }, [router, muridId, sekolahId, reloadKey]);
 
   useEffect(() => {
     if (!role || !base) return;
@@ -161,7 +171,7 @@ export function DetailTabungan({
     return () => {
       active = false;
     };
-  }, [role, base, dari, sampai, tipe, page, muridId, sekolahId]);
+  }, [role, base, dari, sampai, tipe, page, muridId, sekolahId, reloadKey]);
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
   const currentPage = Math.min(page, totalPages);
@@ -201,13 +211,25 @@ export function DetailTabungan({
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/panel/tabungan"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-epaud-blue"
-      >
-        <ArrowRightIcon className="size-4 rotate-180" />
-        Kembali ke Tabungan
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href="/panel/tabungan"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-epaud-blue"
+        >
+          <ArrowRightIcon className="size-4 rotate-180" />
+          Kembali ke Tabungan
+        </Link>
+        {bisaCatat && anak ? (
+          <button
+            type="button"
+            onClick={() => setCatatOpen(true)}
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-epaud-blue px-5 text-sm font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark"
+          >
+            <PlusIcon className="size-4" />
+            Catat Transaksi
+          </button>
+        ) : null}
+      </div>
 
       {error ? <ErrorText>{error}</ErrorText> : null}
 
@@ -422,6 +444,17 @@ export function DetailTabungan({
           </div>
         </div>
       </div>
+
+      {catatOpen && anak ? (
+        <CatatTransaksiModal
+          target={anak}
+          onClose={() => setCatatOpen(false)}
+          onSaved={() => {
+            setCatatOpen(false);
+            setReloadKey((key) => key + 1);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
