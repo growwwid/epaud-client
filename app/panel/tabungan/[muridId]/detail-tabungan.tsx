@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   getEnvelope,
   getJson,
@@ -451,6 +452,7 @@ export function DetailTabungan({
           onClose={() => setCatatOpen(false)}
           onSaved={() => {
             setCatatOpen(false);
+            toast.success("Transaksi disimpan.");
             setReloadKey((key) => key + 1);
           }}
         />
