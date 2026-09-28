@@ -135,10 +135,10 @@ export function Modal({
         type="button"
         aria-label="Tutup"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        className="absolute inset-0 animate-fade-in bg-slate-900/40 backdrop-blur-sm"
       />
       <div
-        className={`relative z-10 max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl ${
+        className={`relative z-10 max-h-[90vh] w-full animate-modal-in overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl ${
           wide ? "max-w-2xl" : "max-w-lg"
         }`}
       >
