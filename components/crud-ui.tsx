@@ -12,10 +12,25 @@ export const buttonPrimary =
 export const buttonGhost =
   "h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50";
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
+  // Dukung label lama yang sudah berakhiran " *" agar tanda bintang otomatis
+  // berwarna merah tanpa perlu mengubah seluruh pemanggil.
+  const needsStar = required || /\s\*$/.test(label);
+  const text = needsStar ? label.replace(/\s*\*$/, "") : label;
   return (
     <label className="block space-y-1.5">
-      <span className="pl-1 text-[13px] font-semibold text-slate-600">{label}</span>
+      <span className="pl-1 text-[13px] font-semibold text-slate-600">
+        {text}
+        {needsStar ? <span className="ml-0.5 text-rose-500">*</span> : null}
+      </span>
       {children}
     </label>
   );
