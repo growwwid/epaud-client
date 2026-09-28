@@ -13,7 +13,6 @@ import {
   ChevronDownIcon,
   FileIcon,
   GridIcon,
-  HashIcon,
   HomeIcon,
   MenuIcon,
   SearchIcon,
@@ -33,7 +32,6 @@ const TABUNGAN_ITEM = { label: "Tabungan", href: "/panel/tabungan", icon: Wallet
 const SEKOLAH_ITEM = { label: "Sekolah", href: "/panel/sekolah", icon: BuildingIcon };
 
 const MASTER_ITEMS = [
-  { label: "Tahun Ajaran", href: "/panel/tahun-ajaran", icon: HashIcon },
   { label: "Guru", href: "/panel/guru", icon: UserIcon },
   { label: "Admin Sekolah", href: "/panel/admin", icon: BuildingIcon },
   { label: "Orang Tua", href: "/panel/orang-tua", icon: UsersIcon },

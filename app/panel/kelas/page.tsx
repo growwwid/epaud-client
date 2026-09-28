@@ -216,6 +216,7 @@ export default function KelasPage() {
       {formOpen ? (
         <KelasForm
           tahunAjaran={tahunAjaran}
+          onTahunAjaranCreated={(ta) => setTahunAjaran((prev) => [...prev, ta])}
           onClose={() => setFormOpen(false)}
           onSaved={() => {
             setFormOpen(false);
@@ -229,6 +230,7 @@ export default function KelasPage() {
         <KelasForm
           item={editing}
           tahunAjaran={tahunAjaran}
+          onTahunAjaranCreated={(ta) => setTahunAjaran((prev) => [...prev, ta])}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -256,23 +258,54 @@ export default function KelasPage() {
 function KelasForm({
   item,
   tahunAjaran,
+  onTahunAjaranCreated,
   onClose,
   onSaved,
 }: {
   item?: Kelas;
   tahunAjaran: TahunAjaran[];
+  onTahunAjaranCreated: (ta: TahunAjaran) => void;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const editing = Boolean(item);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [taId, setTaId] = useState(item?.tahun_ajaran_id ?? "");
+  const [showNewTa, setShowNewTa] = useState(false);
+  const [creatingTa, setCreatingTa] = useState(false);
+  const [taError, setTaError] = useState<string | null>(null);
+  const [newTaNama, setNewTaNama] = useState("");
+  const [newTaSemester, setNewTaSemester] = useState("ganjil");
+
+  async function createTahunAjaran() {
+    const nama = newTaNama.trim();
+    if (!nama) {
+      setTaError("Nama tahun ajaran wajib diisi.");
+      return;
+    }
+    setTaError(null);
+    setCreatingTa(true);
+    const res = await postJson<TahunAjaran>("/api/tahun-ajaran", {
+      nama,
+      semester: newTaSemester,
+    });
+    setCreatingTa(false);
+    if (!res.ok) {
+      setTaError(res.error.message);
+      return;
+    }
+    onTahunAjaranCreated(res.data);
+    setTaId(res.data.id);
+    setShowNewTa(false);
+    setNewTaNama("");
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const payload = {
-      tahun_ajaran_id: String(data.get("tahun_ajaran_id") ?? ""),
+      tahun_ajaran_id: taId,
       nama: String(data.get("nama") ?? "").trim(),
       tingkat: String(data.get("tingkat") ?? "").trim(),
     };
@@ -303,18 +336,70 @@ function KelasForm({
     >
       <form className="mt-5 space-y-4" onSubmit={handleSubmit} noValidate>
         <Field label="Tahun Ajaran *">
-          <select
-            name="tahun_ajaran_id"
-            className={inputClass}
-            defaultValue={item?.tahun_ajaran_id ?? ""}
-          >
-            <option value="">Pilih tahun ajaran</option>
-            {tahunAjaran.map((ta) => (
-              <option key={ta.id} value={ta.id}>
-                {ta.nama} — {ta.semester}
-              </option>
-            ))}
-          </select>
+          <div className="space-y-2">
+            <select
+              name="tahun_ajaran_id"
+              className={inputClass}
+              value={taId}
+              onChange={(event) => setTaId(event.target.value)}
+            >
+              <option value="">Pilih tahun ajaran</option>
+              {tahunAjaran.map((ta) => (
+                <option key={ta.id} value={ta.id}>
+                  {ta.nama} — {ta.semester}
+                </option>
+              ))}
+            </select>
+
+            {showNewTa ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    value={newTaNama}
+                    onChange={(event) => setNewTaNama(event.target.value)}
+                    placeholder="2026/2027"
+                    className={inputClass}
+                  />
+                  <select
+                    value={newTaSemester}
+                    onChange={(event) => setNewTaSemester(event.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="ganjil">Ganjil</option>
+                    <option value="genap">Genap</option>
+                  </select>
+                </div>
+                {taError ? (
+                  <p className="mt-2 text-xs font-medium text-rose-500">{taError}</p>
+                ) : null}
+                <div className="mt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewTa(false)}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={createTahunAjaran}
+                    disabled={creatingTa}
+                    className="rounded-lg bg-epaud-blue px-3 py-1.5 text-xs font-bold text-white transition hover:bg-epaud-blue-dark disabled:opacity-50"
+                  >
+                    {creatingTa ? "Menyimpan..." : "Tambah"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowNewTa(true)}
+                className="text-xs font-semibold text-epaud-blue hover:underline"
+              >
+                + Tambah tahun ajaran baru
+              </button>
+            )}
+          </div>
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nama Kelas *">
