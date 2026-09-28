@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoLockup } from "@/components/logo-lockup";
-import { getJson, type MeResult } from "@/components/api";
+import { getJson, type MeResult, type SekolahProfil } from "@/components/api";
 import {
   BookIcon,
   BuildingIcon,
@@ -30,6 +30,8 @@ const DASHBOARD_ITEM = { label: "Dashboard", href: "/panel", icon: HomeIcon };
 
 const TABUNGAN_ITEM = { label: "Tabungan", href: "/panel/tabungan", icon: WalletIcon };
 
+const SEKOLAH_ITEM = { label: "Sekolah", href: "/panel/sekolah", icon: BuildingIcon };
+
 const MASTER_ITEMS = [
   { label: "Tahun Ajaran", href: "/panel/tahun-ajaran", icon: HashIcon },
   { label: "Guru", href: "/panel/guru", icon: UserIcon },
@@ -53,16 +55,36 @@ export function PanelShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [masterOpen, setMasterOpen] = useState(true);
   const [role, setRole] = useState<string | null>(null);
+  const [profil, setProfil] = useState<SekolahProfil | null>(null);
 
   useEffect(() => {
     let active = true;
-    getJson<MeResult>("/api/auth/me").then((res) => {
-      if (active && res.ok) setRole(res.data.role);
-    });
+    async function load() {
+      const res = await getJson<MeResult>("/api/auth/me");
+      if (!active || !res.ok) return;
+      setRole(res.data.role);
+      if (res.data.nama_sekolah) {
+        document.title = res.data.nama_sekolah;
+      }
+      const profilRes = await getJson<SekolahProfil>("/api/profil-sekolah");
+      if (active && profilRes.ok) setProfil(profilRes.data);
+    }
+    load();
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!profil?.logo) return;
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = profil.logo;
+  }, [profil]);
 
   const isManage = role === "kepala_sekolah" || role === "admin_sekolah";
   const isGuru = role === "guru";
@@ -92,7 +114,7 @@ export function PanelShell({ children }: { children: ReactNode }) {
         }`}
       >
         <div className="flex h-16 items-center justify-between px-5">
-          <LogoLockup compact />
+          <LogoLockup compact logo={profil?.logo} nama={profil?.nama} />
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
@@ -119,6 +141,14 @@ export function PanelShell({ children }: { children: ReactNode }) {
                 pathname === TABUNGAN_ITEM.href ||
                 pathname.startsWith(`${TABUNGAN_ITEM.href}/`)
               }
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
+          {isManage ? (
+            <SidebarLink
+              item={SEKOLAH_ITEM}
+              active={pathname === SEKOLAH_ITEM.href}
               onNavigate={() => setSidebarOpen(false)}
             />
           ) : null}
