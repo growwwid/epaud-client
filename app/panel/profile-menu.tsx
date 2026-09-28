@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getJson, postJson, type MeResult } from "@/components/api";
+import { getJson, patchJson, postJson, type MeResult } from "@/components/api";
 import {
   buttonGhost,
   buttonPrimary,
@@ -18,6 +18,7 @@ import {
   LogOutIcon,
   UserIcon,
 } from "@/components/icons";
+import { PhotoInput } from "@/components/photo-input";
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: "Superadmin",
@@ -42,6 +43,7 @@ export function ProfileMenu() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [me, setMe] = useState<MeResult | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -107,8 +109,13 @@ export function ProfileMenu() {
           open ? "bg-slate-100" : "hover:bg-slate-100"
         }`}
       >
-        <span className="flex size-9 items-center justify-center rounded-full bg-epaud-blue text-sm font-bold text-white">
-          {initials(name)}
+        <span className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-epaud-blue text-sm font-bold text-white">
+          {me?.foto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={me.foto} alt={name} className="size-full object-cover" />
+          ) : (
+            initials(name)
+          )}
         </span>
         <span className="hidden max-w-[12rem] text-left sm:block">
           <span className="block truncate text-sm font-semibold leading-tight text-slate-800">
@@ -142,6 +149,20 @@ export function ProfileMenu() {
             type="button"
             onClick={() => {
               setOpen(false);
+              setPhotoOpen(true);
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            <UserIcon className="size-5 text-slate-400" />
+            Ubah Foto
+          </button>
+
+          <div className="my-1.5 h-px bg-slate-100" />
+
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
               setReportOpen(true);
             }}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -162,7 +183,63 @@ export function ProfileMenu() {
       ) : null}
 
       {reportOpen ? <ReportModal onClose={() => setReportOpen(false)} /> : null}
+      {photoOpen ? (
+        <PhotoModal
+          initial={me?.foto ?? ""}
+          onClose={() => setPhotoOpen(false)}
+          onSaved={(updated) => {
+            setMe(updated);
+            setPhotoOpen(false);
+          }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function PhotoModal({
+  initial,
+  onClose,
+  onSaved,
+}: {
+  initial: string;
+  onClose: () => void;
+  onSaved: (me: MeResult) => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    setSubmitting(true);
+    setError(null);
+    const res = await patchJson<MeResult>("/api/auth/me", {
+      foto: String(data.get("foto") ?? ""),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      setError(res.error.message);
+      return;
+    }
+    onSaved(res.data);
+  }
+
+  return (
+    <Modal title="Ubah Foto Profil" onClose={onClose}>
+      <form className="mt-5 space-y-4" onSubmit={handleSubmit} noValidate>
+        <PhotoInput name="foto" initial={initial} shape="circle" />
+        {error ? <ErrorText>{error}</ErrorText> : null}
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" onClick={onClose} className={buttonGhost}>
+            Batal
+          </button>
+          <button type="submit" disabled={submitting} className={buttonPrimary}>
+            {submitting ? "Menyimpan..." : "Simpan"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

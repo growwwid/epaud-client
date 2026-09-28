@@ -22,6 +22,7 @@ import {
 } from "@/components/icons";
 import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
 import { PasswordInput } from "@/components/password-input";
+import { PhotoInput } from "@/components/photo-input";
 
 type AnakRow = {
   id: string;
@@ -35,6 +36,7 @@ type AnakRow = {
   ortuNama: string;
   ortuPhone: string;
   status: string;
+  foto?: string;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -79,6 +81,7 @@ function toRow(murid: Murid): AnakRow {
     ortuNama: "—",
     ortuPhone: "—",
     status: murid.status,
+    foto: murid.foto,
   };
 }
 
@@ -650,6 +653,9 @@ function MuridFormModal({
           />
         </Field>
         <OptionalFields>
+          <Field label="Foto">
+            <PhotoInput name="foto" initial={item?.foto ?? ""} shape="circle" />
+          </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             {editing ? null : (
               <Field label="NIK">

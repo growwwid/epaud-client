@@ -29,6 +29,7 @@ import {
   tableHeadClass,
 } from "@/components/crud-ui";
 import { PasswordInput } from "@/components/password-input";
+import { PhotoInput } from "@/components/photo-input";
 import { PlusIcon } from "@/components/icons";
 
 export function AkunSekolahCrud({
@@ -477,6 +478,9 @@ function AkunForm({
           />
         </Field>
         <OptionalFields>
+          <Field label="Foto">
+            <PhotoInput name="foto" initial={item?.foto ?? ""} shape="circle" />
+          </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Email">
               <input
