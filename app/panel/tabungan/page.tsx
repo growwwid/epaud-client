@@ -15,6 +15,7 @@ import {
 import { CatatTransaksiModal } from "@/components/catat-transaksi-modal";
 import { downloadCsv } from "@/components/csv";
 import { ErrorText } from "@/components/crud-ui";
+import { TabunganHeatmap } from "@/components/tabungan-heatmap";
 import {
   ChevronDownIcon,
   DownloadIcon,
@@ -255,6 +256,8 @@ export default function TabunganPage() {
           <p className="mt-1 text-xs text-slate-400">Setoran bulan ini</p>
         </div>
       </div>
+
+      {!isOrtu && canManage ? <TabunganHeatmap /> : null}
 
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
