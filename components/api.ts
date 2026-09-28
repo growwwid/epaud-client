@@ -127,6 +127,68 @@ export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error: ApiError };
 
+export type Transaksi = {
+  id: string;
+  murid_id: string;
+  tipe: "setor" | "tarik" | "penyesuaian" | string;
+  nominal: number;
+  saldo_setelah: number;
+  tanggal: string;
+  catatan?: string;
+  created_at?: string;
+};
+
+export type SaldoMurid = {
+  murid_id: string;
+  nama: string;
+  ortu_nama?: string;
+  nisn?: string;
+  kelas?: string;
+  status?: string;
+  saldo: number;
+  transaksi_terakhir?: Transaksi | null;
+};
+
+export type AnakTabungan = SaldoMurid & {
+  sekolah_id: string;
+  sekolah_nama: string;
+};
+
+/** Agregat tabungan untuk kartu statistik. setor = kredit, tarik = debit. */
+export type RingkasanTabungan = {
+  total_saldo: number;
+  total_setor: number;
+  total_tarik: number;
+};
+
+export type ListMeta = { page: number; size: number; total: number };
+
+export type TabunganRekap = {
+  data: SaldoMurid[];
+  meta: ListMeta;
+  total_saldo: number;
+};
+
+export type TransaksiList = { data: Transaksi[]; meta: ListMeta };
+
+export type Tiket = {
+  id: string;
+  akun_id?: string;
+  sekolah_id?: string;
+  nama: string;
+  email?: string;
+  phone?: string;
+  kategori: string;
+  judul: string;
+  deskripsi: string;
+  status: "baru" | "diproses" | "selesai" | string;
+  sumber: "publik" | "akun" | string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type TiketList = { data: Tiket[]; meta: ListMeta };
+
 const NETWORK_ERROR: ApiError = {
   code: "network",
   message: "Tidak dapat menghubungi server. Coba lagi.",
@@ -138,6 +200,7 @@ async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
+  raw = false,
 ): Promise<ApiResult<T>> {
   try {
     const res = await fetch(path, {
@@ -156,7 +219,7 @@ async function request<T>(
         },
       };
     }
-    return { ok: true, data: (payload?.data ?? payload) as T };
+    return { ok: true, data: (raw ? payload : payload?.data ?? payload) as T };
   } catch {
     return { ok: false, status: 0, error: NETWORK_ERROR };
   }
@@ -180,4 +243,9 @@ export function deleteJson<T>(path: string) {
 
 export function getJson<T>(path: string) {
   return request<T>("GET", path);
+}
+
+/** Seperti getJson, tapi mengembalikan envelope utuh (`data`, `meta`, ...). */
+export function getEnvelope<T>(path: string) {
+  return request<T>("GET", path, undefined, true);
 }

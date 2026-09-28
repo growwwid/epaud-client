@@ -3,14 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getJson, type Guru, type MeResult, type Murid } from "@/components/api";
+import { getEnvelope, getJson, type Guru, type MeResult, type Murid, type TabunganRekap } from "@/components/api";
 import { MiniCalendar, dateKey } from "@/components/mini-calendar";
 import { StatCard } from "@/components/stat-card";
-import {
-  DUMMY_EVENTS,
-  DUMMY_MURID_DIAJAR,
-  DUMMY_TOTAL_SALDO,
-} from "@/components/dummy-data";
+import { DUMMY_EVENTS } from "@/components/dummy-data";
 import {
   CalendarIcon,
   ClockIcon,
@@ -53,6 +49,7 @@ export default function PanelPage() {
   const [me, setMe] = useState<MeResult | null>(null);
   const [jumlahGuru, setJumlahGuru] = useState<number | null>(null);
   const [jumlahMurid, setJumlahMurid] = useState<number | null>(null);
+  const [totalSaldo, setTotalSaldo] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,14 +70,16 @@ export default function PanelPage() {
       const role = meRes.data.role;
 
       if (MANAGE_ROLES.includes(role)) {
-        const [guruRes, muridRes] = await Promise.all([
+        const [guruRes, muridRes, rekapRes] = await Promise.all([
           getJson<Guru[]>("/api/guru"),
           getJson<Murid[]>("/api/murid"),
+          getEnvelope<TabunganRekap>("/api/tabungan/rekap?page=1&size=1"),
         ]);
         if (!active) return;
         if (guruRes.ok) setJumlahGuru(Array.isArray(guruRes.data) ? guruRes.data.length : 0);
         if (muridRes.ok)
           setJumlahMurid(Array.isArray(muridRes.data) ? muridRes.data.length : 0);
+        if (rekapRes.ok) setTotalSaldo(rekapRes.data.total_saldo ?? 0);
       }
 
       setLoading(false);
@@ -100,7 +99,6 @@ export default function PanelPage() {
   }, []);
 
   const isManage = me ? MANAGE_ROLES.includes(me.role) : false;
-  const isGuru = me?.role === "guru";
 
   return (
     <div className="space-y-5">
@@ -146,17 +144,7 @@ export default function PanelPage() {
           <StatCard
             icon={<WalletIcon className="size-5" />}
             label="Total Saldo Tabungan"
-            value={loading ? "…" : rupiah.format(DUMMY_TOTAL_SALDO)}
-            hint="Data contoh, menunggu API tabungan"
-          />
-        </div>
-      ) : isGuru ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard
-            icon={<UsersIcon className="size-5" />}
-            label="Murid yang Diajar"
-            value={String(DUMMY_MURID_DIAJAR)}
-            hint="Data contoh, menunggu API"
+            value={loading ? "…" : rupiah.format(totalSaldo ?? 0)}
           />
         </div>
       ) : null}

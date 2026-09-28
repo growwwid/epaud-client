@@ -1,130 +1,35 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  getEnvelope,
+  getJson,
+  postJson,
+  type AnakTabungan,
+  type ApiResult,
+  type MeResult,
+  type RingkasanTabungan,
+  type SaldoMurid,
+  type TabunganRekap,
+} from "@/components/api";
+import { downloadCsv } from "@/components/csv";
+import { ErrorText, Field, Modal, inputClass } from "@/components/crud-ui";
 import {
   ChevronDownIcon,
+  DownloadIcon,
   MoreIcon,
+  PlusIcon,
   SearchIcon,
   WalletIcon,
-  XIcon,
 } from "@/components/icons";
 
-// ponytail: data contoh (dummy). API tabungan (F4 roadmap) belum ada;
-// ganti ke GET /tabungan/rekap + GET /tabungan/murid/{id} saat tersedia.
-type TipeTransaksi = "setor" | "tarik";
-
-type Transaksi = {
-  id: string;
-  tipe: TipeTransaksi;
-  nominal: number;
-  saldoSetelah: number;
-  tanggal: string;
-  catatan?: string;
-};
-
-type TabunganAnak = {
-  id: string;
-  nama: string;
-  kelas: string;
-  transaksi: Transaksi[];
-};
-
-type Entry = {
-  tipe: TipeTransaksi;
-  nominal: number;
-  tanggal: string;
-  catatan?: string;
-};
-
-function riwayat(id: string, entries: Entry[]): Transaksi[] {
-  let saldo = 0;
-  return entries.map((entry, index) => {
-    saldo += entry.tipe === "setor" ? entry.nominal : -entry.nominal;
-    return { id: `${id}-${index + 1}`, ...entry, saldoSetelah: saldo };
-  });
-}
-
-const DUMMY: TabunganAnak[] = [
-  {
-    id: "1",
-    nama: "Andi Pratama",
-    kelas: "Kelompok A",
-    transaksi: riwayat("1", [
-      { tipe: "setor", nominal: 50000, tanggal: "2026-07-08", catatan: "Setoran awal" },
-      { tipe: "setor", nominal: 100000, tanggal: "2026-07-22", catatan: "Tabungan mingguan" },
-      { tipe: "tarik", nominal: 30000, tanggal: "2026-08-05", catatan: "Beli buku" },
-      { tipe: "setor", nominal: 75000, tanggal: "2026-08-19", catatan: "Tabungan mingguan" },
-    ]),
-  },
-  {
-    id: "2",
-    nama: "Siti Nurhaliza",
-    kelas: "Kelompok A",
-    transaksi: riwayat("2", [
-      { tipe: "setor", nominal: 100000, tanggal: "2026-07-10", catatan: "Setoran awal" },
-      { tipe: "setor", nominal: 50000, tanggal: "2026-08-02" },
-      { tipe: "tarik", nominal: 25000, tanggal: "2026-08-28", catatan: "Kegiatan outing" },
-    ]),
-  },
-  {
-    id: "3",
-    nama: "Rizky Maulana",
-    kelas: "Kelompok B",
-    transaksi: riwayat("3", [
-      { tipe: "setor", nominal: 200000, tanggal: "2026-07-05", catatan: "Setoran awal" },
-      { tipe: "tarik", nominal: 50000, tanggal: "2026-07-30", catatan: "Seragam" },
-      { tipe: "setor", nominal: 50000, tanggal: "2026-09-01" },
-    ]),
-  },
-  {
-    id: "4",
-    nama: "Dewi Lestari",
-    kelas: "Kelompok B",
-    transaksi: riwayat("4", [
-      { tipe: "setor", nominal: 150000, tanggal: "2026-07-12", catatan: "Setoran awal" },
-      { tipe: "setor", nominal: 100000, tanggal: "2026-09-03", catatan: "Tabungan bulanan" },
-    ]),
-  },
-  {
-    id: "5",
-    nama: "Fahri Ramadhan",
-    kelas: "Kelompok C",
-    transaksi: riwayat("5", [
-      { tipe: "setor", nominal: 50000, tanggal: "2026-07-15" },
-      { tipe: "tarik", nominal: 20000, tanggal: "2026-08-11", catatan: "Alat tulis" },
-      { tipe: "setor", nominal: 30000, tanggal: "2026-09-09" },
-    ]),
-  },
-  {
-    id: "6",
-    nama: "Nayla Putri",
-    kelas: "Kelompok C",
-    transaksi: riwayat("6", [
-      { tipe: "setor", nominal: 300000, tanggal: "2026-08-20", catatan: "Setoran awal" },
-    ]),
-  },
-  {
-    id: "7",
-    nama: "Bagas Prasetya",
-    kelas: "Kelompok D",
-    transaksi: riwayat("7", [
-      { tipe: "setor", nominal: 75000, tanggal: "2026-07-25" },
-      { tipe: "tarik", nominal: 10000, tanggal: "2026-09-05", catatan: "Jajan" },
-    ]),
-  },
-  {
-    id: "8",
-    nama: "Citra Ayu",
-    kelas: "Kelompok D",
-    transaksi: riwayat("8", [
-      { tipe: "setor", nominal: 40000, tanggal: "2026-08-30" },
-    ]),
-  },
-];
+const MANAGE_ROLES = ["kepala_sekolah", "admin_sekolah"];
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
-function formatTanggal(value: string) {
+function formatTanggal(value?: string) {
+  if (!value) return "—";
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
   if (!match) return value;
   return `${Number(match[3])} ${MONTHS[Number(match[2]) - 1]} ${match[1]}`;
@@ -147,48 +52,157 @@ function initials(name: string) {
   );
 }
 
-function saldoOf(anak: TabunganAnak) {
-  return anak.transaksi.at(-1)?.saldoSetelah ?? 0;
+function tipeLabel(tipe: string) {
+  if (tipe === "setor") return "Setor";
+  if (tipe === "tarik") return "Tarik";
+  return "Penyesuaian";
+}
+
+/**
+ * Ambil seluruh rekap (semua halaman) agar filter kelas/nama & export berjalan
+ * di client. ponytail: ambil-semua, pindah ke filter backend bila murid > ~1000.
+ */
+async function fetchAllRekap(): Promise<ApiResult<SaldoMurid[]>> {
+  const size = 100;
+  const all: SaldoMurid[] = [];
+  for (let page = 1; ; page += 1) {
+    const res = await getEnvelope<TabunganRekap>(
+      `/api/tabungan/rekap?page=${page}&size=${size}`,
+    );
+    if (!res.ok) return res;
+    const batch = res.data.data ?? [];
+    all.push(...batch);
+    const total = res.data.meta?.total ?? all.length;
+    if (batch.length === 0 || all.length >= total) return { ok: true, data: all };
+  }
 }
 
 export default function TabunganPage() {
+  const router = useRouter();
+  const [role, setRole] = useState<string | null>(null);
+  const [rows, setRows] = useState<SaldoMurid[]>([]);
+  const [ringkasan, setRingkasan] = useState<RingkasanTabungan | null>(null);
   const [query, setQuery] = useState("");
   const [kelasFilter, setKelasFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [detail, setDetail] = useState<TabunganAnak | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [catatTarget, setCatatTarget] = useState<SaldoMurid | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const isOrtu = role === "orang_tua";
+  const canManage = role ? MANAGE_ROLES.includes(role) : false;
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      const meRes = await getJson<MeResult>("/api/auth/me");
+      if (!active) return;
+      if (!meRes.ok) {
+        if (meRes.status === 401) router.replace("/login");
+        else {
+          setError(meRes.error.message);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const currentRole = meRes.data.role;
+      setRole(currentRole);
+      const ortu = currentRole === "orang_tua";
+      if (!ortu && !MANAGE_ROLES.includes(currentRole)) {
+        setLoading(false);
+        return;
+      }
+
+      const [listRes, ringRes] = await Promise.all([
+        ortu
+          ? getJson<AnakTabungan[]>("/api/tabungan/anak")
+          : fetchAllRekap(),
+        getJson<RingkasanTabungan>(
+          ortu ? "/api/tabungan/anak/ringkasan" : "/api/tabungan/ringkasan",
+        ),
+      ]);
+      if (!active) return;
+      if (listRes.ok) {
+        setRows(Array.isArray(listRes.data) ? listRes.data : []);
+        setError(null);
+      } else {
+        setError(listRes.error.message);
+      }
+      if (ringRes.ok) setRingkasan(ringRes.data);
+      setLoading(false);
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, [router, reloadKey]);
 
   const kelasOptions = useMemo(
-    () => Array.from(new Set(DUMMY.map((anak) => anak.kelas))).sort(),
-    [],
-  );
-
-  const totalSaldo = useMemo(
-    () => DUMMY.reduce((sum, anak) => sum + saldoOf(anak), 0),
-    [],
-  );
-  const totalTransaksi = useMemo(
-    () => DUMMY.reduce((sum, anak) => sum + anak.transaksi.length, 0),
-    [],
+    () =>
+      Array.from(new Set(rows.map((row) => row.kelas).filter(Boolean))).sort() as string[],
+    [rows],
   );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return DUMMY.filter((anak) => {
-      const matchQuery = !q || anak.nama.toLowerCase().includes(q);
-      const matchKelas = kelasFilter === "all" || anak.kelas === kelasFilter;
-      return matchQuery && matchKelas;
-    });
-  }, [query, kelasFilter]);
+    return rows.filter(
+      (row) =>
+        (!q || row.nama.toLowerCase().includes(q)) &&
+        (kelasFilter === "all" || row.kelas === kelasFilter),
+    );
+  }, [rows, query, kelasFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const totalItems = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
   const currentPage = Math.min(page, totalPages);
   const start = (currentPage - 1) * perPage;
   const pageItems = filtered.slice(start, start + perPage);
 
+  function openDetail(anak: SaldoMurid) {
+    const sekolahId = (anak as AnakTabungan).sekolah_id;
+    router.push(
+      `/panel/tabungan/${anak.murid_id}${sekolahId ? `?sekolah=${sekolahId}` : ""}`,
+    );
+  }
+
+  function exportCsv() {
+    const headers = [
+      "Nama Anak",
+      "Nama Orang Tua",
+      "Kelas",
+      ...(isOrtu ? ["Sekolah"] : []),
+      "Saldo",
+      "Transaksi Terakhir",
+    ];
+    const data = filtered.map((row) => {
+      const last = row.transaksi_terakhir;
+      const sekolah = (row as AnakTabungan).sekolah_nama;
+      return [
+        row.nama,
+        row.ortu_nama ?? "",
+        row.kelas ?? "",
+        ...(isOrtu ? [sekolah ?? ""] : []),
+        row.saldo,
+        last ? `${last.tanggal} · ${tipeLabel(last.tipe)} ${last.nominal}` : "",
+      ];
+    });
+    downloadCsv(`tabungan-${new Date().toISOString().slice(0, 10)}.csv`, headers, data);
+  }
+
+  function reload() {
+    setLoading(true);
+    setError(null);
+    setPage(1);
+    setReloadKey((key) => key + 1);
+  }
+
+  const colCount = isOrtu ? 8 : 7;
+
   return (
     <div className="space-y-5">
-      {/* Page header */}
       <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-epaud-sky to-white p-5 sm:p-6">
         <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white text-epaud-blue shadow-sm">
           <WalletIcon className="size-6" />
@@ -198,41 +212,51 @@ export default function TabunganPage() {
             Tabungan Anak
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Lihat saldo dan riwayat transaksi tabungan setiap anak.
+            {isOrtu
+              ? "Saldo dan riwayat tabungan anak Anda."
+              : "Lihat saldo dan riwayat transaksi tabungan setiap anak."}
           </p>
         </div>
       </div>
 
-      {/* Summary */}
+      {!isOrtu && !canManage && role ? (
+        <ErrorText>
+          Akun Anda tidak memiliki akses ke data tabungan sekolah.
+        </ErrorText>
+      ) : null}
+
+      {error ? <ErrorText>{error}</ErrorText> : null}
+
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
             Total Saldo
           </p>
           <p className="mt-2 text-2xl font-extrabold text-epaud-navy">
-            {rupiah.format(totalSaldo)}
+            {loading || !ringkasan ? "…" : rupiah.format(ringkasan.total_saldo)}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-            Anak dengan Tabungan
+            Total Debit
           </p>
-          <p className="mt-2 text-2xl font-extrabold text-epaud-navy">
-            {DUMMY.length}
+          <p className="mt-2 text-2xl font-extrabold text-rose-500">
+            {loading || !ringkasan ? "…" : rupiah.format(ringkasan.total_tarik)}
           </p>
+          <p className="mt-1 text-xs text-slate-400">Penarikan bulan ini</p>
         </div>
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-            Total Transaksi
+            Total Kredit
           </p>
-          <p className="mt-2 text-2xl font-extrabold text-epaud-navy">
-            {totalTransaksi}
+          <p className="mt-2 text-2xl font-extrabold text-emerald-600">
+            {loading || !ringkasan ? "…" : rupiah.format(ringkasan.total_setor)}
           </p>
+          <p className="mt-1 text-xs text-slate-400">Setoran bulan ini</p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
-        {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[14rem] flex-1">
             <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
@@ -262,26 +286,45 @@ export default function TabunganPage() {
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={filtered.length === 0}
+            className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            <DownloadIcon className="size-5 text-slate-400" />
+            Export CSV
+          </button>
         </div>
 
-        {/* Table */}
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[44rem] border-separate border-spacing-y-2 text-left">
+          <table className="w-full min-w-[56rem] border-separate border-spacing-y-2 text-left">
             <thead>
               <tr className="text-xs font-bold uppercase tracking-wide text-slate-400">
                 <th className="px-4 py-2">No</th>
                 <th className="px-4 py-2">Nama Anak</th>
+                {isOrtu ? <th className="px-4 py-2">Sekolah</th> : null}
                 <th className="px-4 py-2">Kelas</th>
+                <th className="px-4 py-2">Nama Orang Tua</th>
                 <th className="px-4 py-2">Saldo</th>
                 <th className="px-4 py-2">Transaksi Terakhir</th>
                 <th className="px-4 py-2 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {pageItems.length === 0 ? (
+              {loading ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={colCount}
+                    className="rounded-xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-400"
+                  >
+                    Memuat data...
+                  </td>
+                </tr>
+              ) : pageItems.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={colCount}
                     className="rounded-xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-400"
                   >
                     Tidak ada data tabungan.
@@ -289,10 +332,11 @@ export default function TabunganPage() {
                 </tr>
               ) : (
                 pageItems.map((anak, index) => {
-                  const last = anak.transaksi.at(-1);
+                  const last = anak.transaksi_terakhir;
+                  const sekolahNama = (anak as AnakTabungan).sekolah_nama;
                   return (
                     <tr
-                      key={anak.id}
+                      key={`${(anak as AnakTabungan).sekolah_id ?? "s"}-${anak.murid_id}`}
                       className="rounded-xl bg-slate-50/60 text-sm text-slate-700"
                     >
                       <td className="rounded-l-xl px-4 py-3 text-slate-500">
@@ -308,13 +352,21 @@ export default function TabunganPage() {
                           </span>
                         </div>
                       </td>
+                      {isOrtu ? (
+                        <td className="px-4 py-3 text-slate-500">
+                          {sekolahNama ?? "—"}
+                        </td>
+                      ) : null}
                       <td className="px-4 py-3">
                         <span className="inline-flex rounded-full bg-epaud-sky px-3 py-1 text-xs font-semibold text-epaud-blue">
-                          {anak.kelas}
+                          {anak.kelas || "—"}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-slate-500">
+                        {anak.ortu_nama || "—"}
+                      </td>
                       <td className="px-4 py-3 font-bold text-epaud-navy">
-                        {rupiah.format(saldoOf(anak))}
+                        {rupiah.format(anak.saldo)}
                       </td>
                       <td className="px-4 py-3 text-slate-500">
                         {last ? (
@@ -324,28 +376,39 @@ export default function TabunganPage() {
                             </span>
                             <span
                               className={`block text-xs font-semibold ${
-                                last.tipe === "setor"
-                                  ? "text-emerald-600"
-                                  : "text-rose-500"
+                                last.tipe === "tarik"
+                                  ? "text-rose-500"
+                                  : "text-emerald-600"
                               }`}
                             >
-                              {last.tipe === "setor" ? "Setor" : "Tarik"}{" "}
-                              {rupiah.format(last.nominal)}
+                              {tipeLabel(last.tipe)} {rupiah.format(last.nominal)}
                             </span>
                           </>
                         ) : (
                           "—"
                         )}
                       </td>
-                      <td className="rounded-r-xl px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setDetail(anak)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                        >
-                          <MoreIcon className="size-4" />
-                          Riwayat
-                        </button>
+                      <td className="rounded-r-xl px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          {canManage ? (
+                            <button
+                              type="button"
+                              onClick={() => setCatatTarget(anak)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-epaud-blue px-3 py-2 text-xs font-semibold text-white transition hover:bg-epaud-blue-dark"
+                            >
+                              <PlusIcon className="size-4" />
+                              Transaksi
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => openDetail(anak)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                          >
+                            <MoreIcon className="size-4" />
+                            Detail
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -355,11 +418,10 @@ export default function TabunganPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
           <p>
-            Menampilkan {filtered.length === 0 ? 0 : start + 1} -{" "}
-            {Math.min(start + perPage, filtered.length)} dari {filtered.length} data
+            Menampilkan {totalItems === 0 ? 0 : start + 1} -{" "}
+            {Math.min(start + perPage, totalItems)} dari {totalItems} data
           </p>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
@@ -410,111 +472,137 @@ export default function TabunganPage() {
         </div>
       </div>
 
-      {detail ? (
-        <RiwayatModal anak={detail} onClose={() => setDetail(null)} />
+      {catatTarget ? (
+        <CatatModal
+          target={catatTarget}
+          onClose={() => setCatatTarget(null)}
+          onSaved={() => {
+            setCatatTarget(null);
+            reload();
+          }}
+        />
       ) : null}
     </div>
   );
 }
 
-function RiwayatModal({
-  anak,
+function CatatModal({
+  target,
   onClose,
+  onSaved,
 }: {
-  anak: TabunganAnak;
+  target: SaldoMurid;
   onClose: () => void;
+  onSaved: () => void;
 }) {
-  const transaksi = [...anak.transaksi].reverse();
+  const [tipe, setTipe] = useState<"setor" | "tarik" | "koreksi">("setor");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const nominal = Number(String(data.get("nominal") ?? "").trim());
+    const catatan = String(data.get("catatan") ?? "").trim();
+    const tanggal = String(data.get("tanggal") ?? "").trim();
+
+    if (!Number.isFinite(nominal) || nominal === 0) {
+      setError("Nominal harus diisi dan tidak boleh nol.");
+      return;
+    }
+    if (tipe !== "koreksi" && nominal < 0) {
+      setError("Nominal setor/tarik harus bernilai positif.");
+      return;
+    }
+    if (tipe === "koreksi" && !catatan) {
+      setError("Alasan koreksi wajib diisi.");
+      return;
+    }
+
+    setError(null);
+    setSubmitting(true);
+    const res =
+      tipe === "koreksi"
+        ? await postJson("/api/tabungan/koreksi", {
+            murid_id: target.murid_id,
+            nominal,
+            catatan,
+          })
+        : await postJson("/api/tabungan", {
+            murid_id: target.murid_id,
+            tipe,
+            nominal,
+            ...(tanggal ? { tanggal } : {}),
+            ...(catatan ? { catatan } : {}),
+          });
+    setSubmitting(false);
+
+    if (!res.ok) {
+      setError(res.error.message);
+      return;
+    }
+    onSaved();
+  }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Tutup"
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-      />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-full bg-epaud-sky text-sm font-bold text-epaud-blue">
-              {initials(anak.nama)}
-            </span>
-            <div>
-              <h2 className="text-lg font-extrabold text-epaud-navy">
-                {anak.nama}
-              </h2>
-              <p className="text-sm text-slate-500">{anak.kelas}</p>
-            </div>
-          </div>
+    <Modal
+      title="Catat Transaksi"
+      subtitle={`${target.nama}${target.kelas ? ` · ${target.kelas}` : ""} · saldo ${rupiah.format(target.saldo)}`}
+      onClose={onClose}
+    >
+      <form className="mt-5 space-y-4" onSubmit={handleSubmit} noValidate>
+        <Field label="Jenis Transaksi">
+          <select
+            value={tipe}
+            onChange={(event) =>
+              setTipe(event.target.value as "setor" | "tarik" | "koreksi")
+            }
+            className={inputClass}
+          >
+            <option value="setor">Setor</option>
+            <option value="tarik">Tarik</option>
+            <option value="koreksi">Koreksi (penyesuaian saldo)</option>
+          </select>
+        </Field>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={tipe === "koreksi" ? "Nominal (boleh minus) *" : "Nominal *"}>
+            <input
+              name="nominal"
+              type="number"
+              inputMode="numeric"
+              className={inputClass}
+              placeholder="50000"
+            />
+          </Field>
+          <Field label="Tanggal">
+            <input name="tanggal" type="date" className={inputClass} />
+          </Field>
+        </div>
+
+        <Field label={tipe === "koreksi" ? "Alasan Koreksi *" : "Catatan"}>
+          <input name="catatan" className={inputClass} placeholder="Opsional" />
+        </Field>
+
+        {error ? <ErrorText>{error}</ErrorText> : null}
+
+        <div className="flex justify-end gap-2 pt-1">
           <button
             type="button"
             onClick={onClose}
-            aria-label="Tutup"
-            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100"
+            className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
           >
-            <XIcon className="size-5" />
+            Batal
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="h-11 rounded-xl bg-epaud-blue px-6 text-sm font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          >
+            {submitting ? "Menyimpan..." : "Simpan"}
           </button>
         </div>
-
-        <div className="mt-5 flex items-center justify-between rounded-2xl bg-gradient-to-r from-epaud-sky to-white p-5">
-          <span className="text-sm font-semibold text-slate-600">Saldo saat ini</span>
-          <span className="text-2xl font-extrabold text-epaud-navy">
-            {rupiah.format(saldoOf(anak))}
-          </span>
-        </div>
-
-        <h3 className="mt-6 text-sm font-bold uppercase tracking-wide text-slate-400">
-          Riwayat Transaksi
-        </h3>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[36rem] border-separate border-spacing-y-2 text-left">
-            <thead>
-              <tr className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                <th className="px-4 py-2">Tanggal</th>
-                <th className="px-4 py-2">Tipe</th>
-                <th className="px-4 py-2 text-right">Nominal</th>
-                <th className="px-4 py-2 text-right">Saldo</th>
-                <th className="px-4 py-2">Catatan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transaksi.map((trx) => (
-                <tr key={trx.id} className="bg-slate-50/60 text-sm text-slate-700">
-                  <td className="rounded-l-xl px-4 py-3 text-slate-500">
-                    {formatTanggal(trx.tanggal)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                        trx.tipe === "setor"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-rose-50 text-rose-500"
-                      }`}
-                    >
-                      {trx.tipe === "setor" ? "Setor" : "Tarik"}
-                    </span>
-                  </td>
-                  <td
-                    className={`px-4 py-3 text-right font-semibold ${
-                      trx.tipe === "setor" ? "text-emerald-600" : "text-rose-500"
-                    }`}
-                  >
-                    {trx.tipe === "setor" ? "+" : "-"}
-                    {rupiah.format(trx.nominal)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold text-slate-700">
-                    {rupiah.format(trx.saldoSetelah)}
-                  </td>
-                  <td className="rounded-r-xl px-4 py-3 text-slate-500">
-                    {trx.catatan || "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }

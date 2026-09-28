@@ -256,6 +256,15 @@ export function WalletIcon({ className }: IconProps) {
   );
 }
 
+export function DownloadIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M12 4v11m0 0 4-4m-4 4-4-4" />
+      <path d="M5 19h14" />
+    </svg>
+  );
+}
+
 export function CalendarIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>

@@ -11,6 +11,7 @@ import {
   BuildingIcon,
   CalendarIcon,
   ChevronDownIcon,
+  FileIcon,
   GridIcon,
   HashIcon,
   HomeIcon,
@@ -19,12 +20,15 @@ import {
   StarIcon,
   UserIcon,
   UsersIcon,
+  WalletIcon,
   XIcon,
 } from "@/components/icons";
 import { NotificationMenu } from "./notification-menu";
 import { ProfileMenu } from "./profile-menu";
 
 const DASHBOARD_ITEM = { label: "Dashboard", href: "/panel", icon: HomeIcon };
+
+const TABUNGAN_ITEM = { label: "Tabungan", href: "/panel/tabungan", icon: WalletIcon };
 
 const MASTER_ITEMS = [
   { label: "Tahun Ajaran", href: "/panel/tahun-ajaran", icon: HashIcon },
@@ -38,6 +42,10 @@ const MASTER_ITEMS = [
 const AGENDA_ITEMS = [
   { label: "Event", href: "/panel/event", icon: StarIcon },
   { label: "Kalender", href: "/panel/kalender", icon: CalendarIcon },
+];
+
+const SUPERADMIN_ITEMS = [
+  { label: "Tiket Kendala", href: "/panel/tiket", icon: FileIcon },
 ];
 
 export function PanelShell({ children }: { children: ReactNode }) {
@@ -59,8 +67,10 @@ export function PanelShell({ children }: { children: ReactNode }) {
   const isManage = role === "kepala_sekolah" || role === "admin_sekolah";
   const isGuru = role === "guru";
   const isOrtu = role === "orang_tua";
+  const isSuperadmin = role === "superadmin";
   const showDashboard = !isOrtu;
   const showMaster = isManage;
+  const showTabungan = isManage || isOrtu;
   const showAgenda = isManage || isGuru || isOrtu;
 
   return (
@@ -102,6 +112,17 @@ export function PanelShell({ children }: { children: ReactNode }) {
             />
           ) : null}
 
+          {showTabungan ? (
+            <SidebarLink
+              item={TABUNGAN_ITEM}
+              active={
+                pathname === TABUNGAN_ITEM.href ||
+                pathname.startsWith(`${TABUNGAN_ITEM.href}/`)
+              }
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
           {showMaster ? (
             <div>
               <button
@@ -137,6 +158,17 @@ export function PanelShell({ children }: { children: ReactNode }) {
 
           {showAgenda
             ? AGENDA_ITEMS.map((item) => (
+                <SidebarLink
+                  key={item.label}
+                  item={item}
+                  active={pathname === item.href}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+              ))
+            : null}
+
+          {isSuperadmin
+            ? SUPERADMIN_ITEMS.map((item) => (
                 <SidebarLink
                   key={item.label}
                   item={item}
