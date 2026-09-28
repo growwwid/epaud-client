@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
-import { ChevronDownIcon, EyeIcon, EyeOffIcon, LockIcon } from "./icons";
+import { ChevronDownIcon, EyeIcon, EyeOffIcon, LockIcon, RefreshIcon } from "./icons";
+import { PasswordStrength, generatePassword } from "./password-input";
 
 const baseField =
   "h-14 w-full rounded-2xl border bg-white text-[15px] text-slate-700 outline-none transition placeholder:text-slate-400 focus:ring-4 disabled:cursor-not-allowed disabled:bg-slate-50";
@@ -60,6 +61,8 @@ type PasswordFieldProps = {
   id: string;
   label: string;
   error?: string;
+  showStrength?: boolean;
+  showGenerate?: boolean;
 } & InputHTMLAttributes<HTMLInputElement>;
 
 export function PasswordField({
@@ -67,9 +70,20 @@ export function PasswordField({
   label,
   error,
   className = "",
+  showStrength = false,
+  showGenerate = false,
+  defaultValue,
+  onChange,
   ...props
 }: PasswordFieldProps) {
   const [show, setShow] = useState(false);
+  const [value, setValue] = useState(String(defaultValue ?? ""));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function setPassword(next: string) {
+    setValue(next);
+    if (inputRef.current) inputRef.current.value = next;
+  }
 
   return (
     <div className="space-y-1.5">
@@ -79,9 +93,15 @@ export function PasswordField({
       <div className="relative">
         <LockIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
         <input
+          ref={inputRef}
           id={id}
           type={show ? "text" : "password"}
           aria-invalid={error ? true : undefined}
+          defaultValue={defaultValue}
+          onChange={(event) => {
+            setValue(event.target.value);
+            onChange?.(event);
+          }}
           className={`${baseField} ${fieldClasses(Boolean(error))} pl-12 pr-14 ${className}`}
           {...props}
         />
@@ -94,6 +114,20 @@ export function PasswordField({
           {show ? <EyeOffIcon className="size-5" /> : <EyeIcon className="size-5" />}
         </button>
       </div>
+      {showGenerate ? (
+        <button
+          type="button"
+          onClick={() => {
+            setPassword(generatePassword());
+            setShow(true);
+          }}
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-epaud-blue hover:underline"
+        >
+          <RefreshIcon className="size-4" />
+          Generate password
+        </button>
+      ) : null}
+      {showStrength && value ? <PasswordStrength value={value} /> : null}
       <FieldError error={error} />
     </div>
   );

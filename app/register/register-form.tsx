@@ -260,6 +260,8 @@ export function RegisterForm() {
           placeholder="Password"
           autoComplete="new-password"
           error={errors.password}
+          showStrength
+          showGenerate
         />
 
         <PasswordField

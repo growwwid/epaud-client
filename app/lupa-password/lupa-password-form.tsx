@@ -172,6 +172,8 @@ export function LupaPasswordForm() {
             label="Password Baru"
             placeholder="Minimal 8 karakter"
             autoComplete="new-password"
+            showStrength
+            showGenerate
           />
           <PasswordField
             id="confirm"

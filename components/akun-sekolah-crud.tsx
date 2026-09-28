@@ -28,6 +28,7 @@ import {
   Panel,
   tableHeadClass,
 } from "@/components/crud-ui";
+import { PasswordInput } from "@/components/password-input";
 import { PlusIcon } from "@/components/icons";
 
 export function AkunSekolahCrud({
@@ -513,14 +514,14 @@ function AkunForm({
           ) : null}
 
           <Field label="Password">
-            <input
+            <PasswordInput
               name="password"
-              type="text"
               className={inputClass}
-              placeholder={
+              placeholder={editing ? "Kosongkan bila tidak diubah" : "Kosongkan untuk password default"}
+              hint={
                 editing
-                  ? "Kosongkan bila tidak diubah"
-                  : "Kosongkan untuk password default"
+                  ? undefined
+                  : "Kosongkan untuk memakai password default (default123)."
               }
             />
           </Field>
