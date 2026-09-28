@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   getEnvelope,
   getJson,
@@ -481,6 +482,7 @@ export default function TabunganPage() {
           onClose={() => setCatatTarget(null)}
           onSaved={() => {
             setCatatTarget(null);
+            toast.success("Transaksi disimpan.");
             reload();
           }}
         />

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { ChevronDownIcon, XIcon } from "./icons";
 
 export const inputClass =
@@ -95,6 +96,9 @@ export function Panel({ children }: { children: ReactNode }) {
 }
 
 export function ErrorText({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    if (children) toast.error(String(children));
+  }, [children]);
   return (
     <p
       role="alert"
@@ -105,31 +109,11 @@ export function ErrorText({ children }: { children: ReactNode }) {
   );
 }
 
-export function Notice({
-  children,
-  onClose,
-}: {
-  children: ReactNode;
-  onClose?: () => void;
-}) {
-  return (
-    <p
-      role="status"
-      className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-700"
-    >
-      {children}
-      {onClose ? (
-        <button
-          type="button"
-          aria-label="Tutup"
-          onClick={onClose}
-          className="text-emerald-500 transition hover:text-emerald-700"
-        >
-          <XIcon className="size-4" />
-        </button>
-      ) : null}
-    </p>
-  );
+export function Notice({ children }: { children: ReactNode; onClose?: () => void }) {
+  useEffect(() => {
+    if (children) toast.success(String(children));
+  }, [children]);
+  return null;
 }
 
 export function Modal({
