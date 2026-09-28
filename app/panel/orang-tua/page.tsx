@@ -7,9 +7,10 @@ export default function OrangTuaPage() {
   return (
     <AkunSekolahCrud
       variant="orangtua"
+      allowCreate={false}
       icon={<UsersIcon className="size-6" />}
       title="Orang Tua"
-      subtitle="Kelola akun orang tua dan tautan ke anak (via NIK)."
+      subtitle="Daftar & perbarui data orang tua. Data orang tua dibuat lewat form murid."
     />
   );
 }

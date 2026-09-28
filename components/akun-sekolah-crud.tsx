@@ -37,11 +37,13 @@ export function AkunSekolahCrud({
   title,
   subtitle,
   icon,
+  allowCreate = true,
 }: {
   variant: "admin" | "orangtua";
   title: string;
   subtitle: string;
   icon: ReactNode;
+  allowCreate?: boolean;
 }) {
   const router = useRouter();
   const isOrtu = variant === "orangtua";
@@ -118,14 +120,16 @@ export function AkunSekolahCrud({
             placeholder="Cari nama, email, atau no. HP..."
             className="h-11 min-w-[14rem] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:bg-white focus:ring-4 focus:ring-epaud-blue/10"
           />
-          <button
-            type="button"
-            onClick={() => setFormOpen(true)}
-            className="flex h-11 items-center gap-2 rounded-xl bg-epaud-blue px-5 text-sm font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark"
-          >
-            <PlusIcon className="size-5" />
-            Tambah {isOrtu ? "Orang Tua" : "Admin"}
-          </button>
+          {allowCreate ? (
+            <button
+              type="button"
+              onClick={() => setFormOpen(true)}
+              className="flex h-11 items-center gap-2 rounded-xl bg-epaud-blue px-5 text-sm font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark"
+            >
+              <PlusIcon className="size-5" />
+              Tambah {isOrtu ? "Orang Tua" : "Admin"}
+            </button>
+          ) : null}
         </div>
 
         {error ? (

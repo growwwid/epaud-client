@@ -23,6 +23,7 @@ import {
 import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
 import { PasswordInput } from "@/components/password-input";
 import { PhotoInput } from "@/components/photo-input";
+import { OrangTuaPicker } from "@/components/orang-tua-picker";
 
 type AnakRow = {
   id: string;
@@ -618,6 +619,8 @@ function MuridFormModal({
       nisn: String(data.get("nisn") ?? "").trim(),
       tanggal_lahir: String(data.get("tanggal_lahir") ?? "").trim(),
       jenis_kelamin: String(data.get("jenis_kelamin") ?? ""),
+      foto: String(data.get("foto") ?? ""),
+      orang_tua_id: String(data.get("orang_tua_id") ?? "").trim(),
     };
     if (!payload.nama) {
       setError("Nama anak wajib diisi.");
@@ -655,6 +658,9 @@ function MuridFormModal({
         <OptionalFields>
           <Field label="Foto">
             <PhotoInput name="foto" initial={item?.foto ?? ""} shape="circle" />
+          </Field>
+          <Field label="Orang Tua / Wali">
+            <OrangTuaPicker initialNama={item?.ortuNama && item.ortuNama !== "—" ? item.ortuNama : ""} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             {editing ? null : (
