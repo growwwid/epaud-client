@@ -14,6 +14,7 @@ import {
   Field,
   inputClass,
   Notice,
+  OptionalFields,
   PageHeader,
   Panel,
 } from "@/components/crud-ui";
@@ -188,28 +189,30 @@ export default function SekolahPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nama sekolah *">
-              <input name="nama" defaultValue={profil.nama} required className={inputClass} />
-            </Field>
-            <Field label="NPSN">
-              <input name="npsn" defaultValue={profil.npsn} inputMode="numeric" className={inputClass} />
-            </Field>
-          </div>
-
-          <Field label="Tipe">
-            <select name="tipe" defaultValue={profil.tipe} className={inputClass}>
-              {TIPE_OPTIONS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+          <Field label="Nama sekolah *">
+            <input name="nama" defaultValue={profil.nama} required className={inputClass} />
           </Field>
 
-          <Field label="Alamat">
-            <textarea name="alamat" defaultValue={profil.alamat} rows={3} className={inputClass} />
-          </Field>
+          <OptionalFields>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="NPSN">
+                <input name="npsn" defaultValue={profil.npsn} inputMode="numeric" className={inputClass} />
+              </Field>
+              <Field label="Tipe">
+                <select name="tipe" defaultValue={profil.tipe} className={inputClass}>
+                  {TIPE_OPTIONS.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+
+            <Field label="Alamat">
+              <textarea name="alamat" defaultValue={profil.alamat} rows={3} className={inputClass} />
+            </Field>
+          </OptionalFields>
 
           <div className="flex justify-end">
             <button type="submit" disabled={saving} className={buttonPrimary}>

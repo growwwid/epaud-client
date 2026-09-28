@@ -23,6 +23,7 @@ import {
   inputClass,
   Modal,
   Notice,
+  OptionalFields,
   PageHeader,
   Panel,
   tableHeadClass,
@@ -474,54 +475,56 @@ function AkunForm({
             defaultValue={item?.nama ?? ""}
           />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Email">
-            <input
-              name="email"
-              type="email"
-              className={inputClass}
-              placeholder="email@contoh.id"
-              defaultValue={item?.email ?? ""}
-            />
-          </Field>
-          <Field label="No. HP">
-            <input
-              name="phone"
-              className={inputClass}
-              placeholder="08xxxxxxxxxx"
-              defaultValue={item?.phone ?? ""}
-            />
-          </Field>
-        </div>
-
-        {isOrtu && !editing ? (
-          <>
-            <Field label="NIK">
-              <input name="nik" className={inputClass} placeholder="NIK orang tua" />
-            </Field>
-            <Field label="NIK Anak">
-              <textarea
-                name="anak_nik"
-                rows={3}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10"
-                placeholder="Satu NIK per baris (harus sudah terdaftar sebagai murid)"
+        <OptionalFields>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Email">
+              <input
+                name="email"
+                type="email"
+                className={inputClass}
+                placeholder="email@contoh.id"
+                defaultValue={item?.email ?? ""}
               />
             </Field>
-          </>
-        ) : null}
+            <Field label="No. HP">
+              <input
+                name="phone"
+                className={inputClass}
+                placeholder="08xxxxxxxxxx"
+                defaultValue={item?.phone ?? ""}
+              />
+            </Field>
+          </div>
 
-        <Field label="Password">
-          <input
-            name="password"
-            type="text"
-            className={inputClass}
-            placeholder={
-              editing
-                ? "Kosongkan bila tidak diubah"
-                : "Kosongkan untuk password default"
-            }
-          />
-        </Field>
+          {isOrtu && !editing ? (
+            <>
+              <Field label="NIK">
+                <input name="nik" className={inputClass} placeholder="NIK orang tua" />
+              </Field>
+              <Field label="NIK Anak">
+                <textarea
+                  name="anak_nik"
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10"
+                  placeholder="Satu NIK per baris (harus sudah terdaftar sebagai murid)"
+                />
+              </Field>
+            </>
+          ) : null}
+
+          <Field label="Password">
+            <input
+              name="password"
+              type="text"
+              className={inputClass}
+              placeholder={
+                editing
+                  ? "Kosongkan bila tidak diubah"
+                  : "Kosongkan untuk password default"
+              }
+            />
+          </Field>
+        </OptionalFields>
 
         {error ? <ErrorText>{error}</ErrorText> : null}
 

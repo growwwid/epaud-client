@@ -24,6 +24,7 @@ import {
   inputClass,
   Modal,
   Notice,
+  OptionalFields,
   PageHeader,
   Panel,
   tableHeadClass,
@@ -401,15 +402,15 @@ function KelasForm({
             )}
           </div>
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nama Kelas *">
-            <input
-              name="nama"
-              className={inputClass}
-              placeholder="Kelas A"
-              defaultValue={item?.nama ?? ""}
-            />
-          </Field>
+        <Field label="Nama Kelas *">
+          <input
+            name="nama"
+            className={inputClass}
+            placeholder="Kelas A"
+            defaultValue={item?.nama ?? ""}
+          />
+        </Field>
+        <OptionalFields>
           <Field label="Tingkat">
             <input
               name="tingkat"
@@ -418,7 +419,7 @@ function KelasForm({
               defaultValue={item?.tingkat ?? ""}
             />
           </Field>
-        </div>
+        </OptionalFields>
 
         {error ? <ErrorText>{error}</ErrorText> : null}
 

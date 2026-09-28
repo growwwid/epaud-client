@@ -17,8 +17,8 @@ import {
   PlusIcon,
   SearchIcon,
   UserIcon,
-  XIcon,
 } from "@/components/icons";
+import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
 
 const JENIS_LABEL: Record<string, string> = {
   guru_kelas: "Guru Kelas",
@@ -40,26 +40,6 @@ function initials(name: string) {
       .join("") || "?"
   );
 }
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="pl-1 text-[13px] font-semibold text-slate-600">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-const inputClass =
-  "h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10";
 
 export default function DataGuruPage() {
   const router = useRouter();
@@ -435,48 +415,6 @@ export default function DataGuruPage() {
   );
 }
 
-function Modal({
-  title,
-  subtitle,
-  onClose,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Tutup"
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-      />
-      <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-extrabold text-epaud-navy">{title}</h2>
-            {subtitle ? (
-              <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup"
-            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100"
-          >
-            <XIcon className="size-5" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function GuruFormModal({
   item,
   onClose,
@@ -544,21 +482,6 @@ function GuruFormModal({
             defaultValue={item?.nama ?? ""}
           />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {editing ? null : (
-            <Field label="NIK">
-              <input name="nik" className={inputClass} placeholder="NIK" />
-            </Field>
-          )}
-          <Field label="NIP">
-            <input
-              name="nip"
-              className={inputClass}
-              placeholder="NIP"
-              defaultValue={item?.nip ?? ""}
-            />
-          </Field>
-        </div>
         <Field label="Jenis Guru *">
           <select
             name="jenis"
@@ -569,37 +492,55 @@ function GuruFormModal({
             <option value="guru_pendamping">Guru Pendamping</option>
           </select>
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Email">
+
+        <OptionalFields>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {editing ? null : (
+              <Field label="NIK">
+                <input name="nik" className={inputClass} placeholder="NIK" />
+              </Field>
+            )}
+            <Field label="NIP">
+              <input
+                name="nip"
+                className={inputClass}
+                placeholder="NIP"
+                defaultValue={item?.nip ?? ""}
+              />
+            </Field>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Email">
+              <input
+                name="email"
+                type="email"
+                className={inputClass}
+                placeholder="email@sekolah.id"
+                defaultValue={item?.email ?? ""}
+              />
+            </Field>
+            <Field label="No. HP">
+              <input
+                name="phone"
+                className={inputClass}
+                placeholder="08xxxxxxxxxx"
+                defaultValue={item?.phone ?? ""}
+              />
+            </Field>
+          </div>
+          <Field label="Password">
             <input
-              name="email"
-              type="email"
+              name="password"
+              type="text"
               className={inputClass}
-              placeholder="email@sekolah.id"
-              defaultValue={item?.email ?? ""}
+              placeholder={
+                editing
+                  ? "Kosongkan bila tidak diubah"
+                  : "Kosongkan untuk password default"
+              }
             />
           </Field>
-          <Field label="No. HP">
-            <input
-              name="phone"
-              className={inputClass}
-              placeholder="08xxxxxxxxxx"
-              defaultValue={item?.phone ?? ""}
-            />
-          </Field>
-        </div>
-        <Field label="Password">
-          <input
-            name="password"
-            type="text"
-            className={inputClass}
-            placeholder={
-              editing
-                ? "Kosongkan bila tidak diubah"
-                : "Kosongkan untuk password default"
-            }
-          />
-        </Field>
+        </OptionalFields>
 
         {error ? (
           <p
