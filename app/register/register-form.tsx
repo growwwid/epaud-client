@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { postJson } from "@/components/api";
 import { AuthCard } from "@/components/auth-card";
 import { PasswordField, SelectField, TextField } from "@/components/form-fields";
 import {
@@ -10,6 +11,7 @@ import {
   AtSignIcon,
   BuildingIcon,
   GridIcon,
+  HashIcon,
   PhoneIcon,
   UserIcon,
 } from "@/components/icons";
@@ -18,12 +20,22 @@ import { savePendingRegistration } from "@/components/registration";
 const SCHOOL_TYPES = ["TK", "RA", "KB", "TPA", "SPS"] as const;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[0-9+\-\s]{9,16}$/;
+const NPSN_PATTERN = /^\d{8}$/;
 
 type ContactType = "email" | "phone";
+
+type RegisterResult = {
+  sekolah_id: string;
+  kanal: string;
+  tujuan: string;
+  expires_in: number;
+};
 
 export function RegisterForm() {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [contactType, setContactType] = useState<ContactType>("email");
 
   const isEmail = contactType === "email";
@@ -40,11 +52,12 @@ export function RegisterForm() {
     });
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
 
     const schoolName = String(data.get("schoolName") ?? "").trim();
+    const npsn = String(data.get("npsn") ?? "").trim();
     const headmasterName = String(data.get("headmasterName") ?? "").trim();
     const contact = String(data.get("contact") ?? "").trim();
     const schoolType = String(data.get("schoolType") ?? "");
@@ -54,6 +67,11 @@ export function RegisterForm() {
     const next: Record<string, string> = {};
 
     if (!schoolName) next.schoolName = "Nama sekolah wajib diisi.";
+    if (!npsn) {
+      next.npsn = "NPSN wajib diisi.";
+    } else if (!NPSN_PATTERN.test(npsn)) {
+      next.npsn = "NPSN harus 8 digit angka.";
+    }
     if (!headmasterName)
       next.headmasterName = "Nama kepala sekolah wajib diisi.";
 
@@ -79,11 +97,44 @@ export function RegisterForm() {
     }
 
     setErrors({});
+    setFormError(null);
+    setSubmitting(true);
+
+    const result = await postJson<RegisterResult>("/api/auth/register", {
+      nama_sekolah: schoolName,
+      npsn,
+      tipe: schoolType,
+      nama_kepala_sekolah: headmasterName,
+      kanal: contactType,
+      ...(isEmail ? { email: contact } : { phone: contact }),
+      password,
+    });
+
+    if (!result.ok) {
+      setSubmitting(false);
+      const details = result.error.details as
+        | { sekolah_id?: string; kanal?: string; tujuan?: string }
+        | null;
+      // Sekolah bentrok tapi masih pending: lanjutkan ke verifikasi OTP.
+      if (result.error.code === "sekolah_terdaftar" && details?.sekolah_id) {
+        savePendingRegistration({
+          schoolId: details.sekolah_id,
+          kanal: details.kanal ?? contactType,
+          tujuan: details.tujuan ?? contact,
+          expiresIn: 180,
+        });
+        router.push("/register/verifikasi");
+        return;
+      }
+      setFormError(result.error.message);
+      return;
+    }
+
     savePendingRegistration({
-      schoolName,
-      headmasterName,
-      contact,
-      schoolType,
+      schoolId: result.data.sekolah_id,
+      kanal: result.data.kanal,
+      tujuan: result.data.tujuan,
+      expiresIn: result.data.expires_in,
     });
     router.push("/register/verifikasi");
   }
@@ -108,6 +159,17 @@ export function RegisterForm() {
           autoComplete="organization"
           icon={<BuildingIcon className="size-5" />}
           error={errors.schoolName}
+        />
+
+        <TextField
+          id="npsn"
+          name="npsn"
+          label="NPSN"
+          placeholder="NPSN (8 digit)"
+          inputMode="numeric"
+          maxLength={8}
+          icon={<HashIcon className="size-5" />}
+          error={errors.npsn}
         />
 
         <TextField
@@ -198,6 +260,8 @@ export function RegisterForm() {
           placeholder="Password"
           autoComplete="new-password"
           error={errors.password}
+          showStrength
+          showGenerate
         />
 
         <PasswordField
@@ -209,11 +273,21 @@ export function RegisterForm() {
           error={errors.confirmPassword}
         />
 
+        {formError ? (
+          <p
+            role="alert"
+            className="rounded-xl bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600"
+          >
+            {formError}
+          </p>
+        ) : null}
+
         <button
           type="submit"
-          className="group flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-epaud-blue px-6 text-base font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/30 active:scale-[0.99]"
+          disabled={submitting}
+          className="group flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-epaud-blue px-6 text-base font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/30 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
-          Daftar
+          {submitting ? "Memproses..." : "Daftar"}
           <ArrowRightIcon className="size-5 transition-transform group-hover:translate-x-0.5" />
         </button>
       </form>

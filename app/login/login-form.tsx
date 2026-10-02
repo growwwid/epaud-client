@@ -3,16 +3,54 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { postJson } from "@/components/api";
 import { AuthCard } from "@/components/auth-card";
 import { PasswordField, TextField } from "@/components/form-fields";
 import { ArrowRightIcon, CheckIcon, GoogleIcon, UserIcon } from "@/components/icons";
+import { savePendingRegistration } from "@/components/registration";
 
-export function LoginForm({ registered = false }: { registered?: boolean }) {
+export function LoginForm({
+  registered = false,
+  reset = false,
+}: {
+  registered?: boolean;
+  reset?: boolean;
+}) {
   const router = useRouter();
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleGoogle() {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      const res = await fetch("/api/auth/google");
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.data?.url) {
+        setError(
+          payload?.error?.message ?? "Login Google belum dikonfigurasi.",
+        );
+        setGoogleLoading(false);
+        return;
+      }
+      window.location.href = payload.data.url as string;
+    } catch {
+      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setGoogleLoading(false);
+    }
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    const target = event.target as HTMLElement;
+    if (target.tagName === "TEXTAREA") return;
+    event.preventDefault();
+    event.currentTarget.requestSubmit();
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const identifier = String(data.get("identifier") ?? "").trim();
@@ -24,18 +62,39 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
     }
 
     setError(null);
+    setSubmitting(true);
 
-    // Belum ada backend: simpan sesi tiruan lalu arahkan ke panel.
-    try {
-      window.sessionStorage.setItem(
-        "epaud:session",
-        JSON.stringify({ identifier, at: Date.now() }),
-      );
-    } catch {
-      // abaikan bila storage tidak tersedia
+    const isEmail = identifier.includes("@");
+    const result = await postJson("/api/auth/login", {
+      ...(isEmail ? { email: identifier } : { phone: identifier }),
+      password,
+      remember,
+    });
+
+    if (result.ok) {
+      router.push("/panel");
+      router.refresh();
+      return;
     }
 
-    router.push("/panel");
+    setSubmitting(false);
+
+    const details = result.error.details as
+      | { sekolah_id?: string; kanal?: string; tujuan?: string }
+      | null;
+    // Sekolah belum aktif: arahkan ke verifikasi OTP.
+    if (result.error.code === "school_not_active" && details?.sekolah_id) {
+      savePendingRegistration({
+        schoolId: details.sekolah_id,
+        kanal: details.kanal ?? "email",
+        tujuan: details.tujuan ?? identifier,
+        expiresIn: 180,
+      });
+      router.push("/register/verifikasi");
+      return;
+    }
+
+    setError(result.error.message);
   }
 
   return (
@@ -58,7 +117,21 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
         </p>
       ) : null}
 
-      <form className="mt-7 space-y-5 sm:mt-9" onSubmit={handleSubmit} noValidate>
+      {reset ? (
+        <p
+          role="status"
+          className="mt-6 rounded-xl bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-700"
+        >
+          Password berhasil diubah. Silakan masuk dengan password baru.
+        </p>
+      ) : null}
+
+      <form
+        className="mt-7 space-y-5 sm:mt-9"
+        onSubmit={handleSubmit}
+        onKeyDown={handleKeyDown}
+        noValidate
+      >
         <TextField
           id="identifier"
           name="identifier"
@@ -90,12 +163,12 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
             </span>
             Ingat saya
           </label>
-          <a
-            href="#"
+          <Link
+            href="/lupa-password"
             className="text-sm font-semibold text-epaud-blue transition hover:text-epaud-blue-dark hover:underline"
           >
             Lupa password?
-          </a>
+          </Link>
         </div>
 
         {error ? (
@@ -109,9 +182,10 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
 
         <button
           type="submit"
-          className="group flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-epaud-blue px-6 text-base font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/30 active:scale-[0.99]"
+          disabled={submitting}
+          className="group flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-epaud-blue px-6 text-base font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/30 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
-          Masuk
+          {submitting ? "Memproses..." : "Masuk"}
           <ArrowRightIcon className="size-5 transition-transform group-hover:translate-x-0.5" />
         </button>
       </form>
@@ -124,10 +198,12 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
 
       <button
         type="button"
-        className="mt-6 flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 text-base font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/15"
+        onClick={handleGoogle}
+        disabled={googleLoading}
+        className="mt-6 flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 text-base font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/15 disabled:opacity-60"
       >
         <GoogleIcon className="size-5" />
-        Masuk dengan Google
+        {googleLoading ? "Mengalihkan…" : "Masuk dengan Google"}
       </button>
 
       <p className="mt-7 text-center text-sm text-slate-500">
@@ -137,6 +213,16 @@ export function LoginForm({ registered = false }: { registered?: boolean }) {
           className="font-semibold text-epaud-blue transition hover:text-epaud-blue-dark hover:underline"
         >
           Daftarkan sekolah Anda
+        </Link>
+      </p>
+
+      <p className="mt-3 text-center text-sm text-slate-500">
+        Mengalami kendala?{" "}
+        <Link
+          href="/kontak"
+          className="font-semibold text-epaud-blue transition hover:text-epaud-blue-dark hover:underline"
+        >
+          Hubungi kami
         </Link>
       </p>
     </AuthCard>

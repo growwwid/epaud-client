@@ -1,42 +1,117 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoLockup } from "@/components/logo-lockup";
+import { getJson, type MeResult, type SekolahProfil } from "@/components/api";
 import {
   BookIcon,
+  BuildingIcon,
+  CalendarIcon,
+  ChevronDownIcon,
   FileIcon,
   GridIcon,
   HomeIcon,
+  MapPinIcon,
   MenuIcon,
   SearchIcon,
-  SettingsIcon,
   StarIcon,
   UserIcon,
   UsersIcon,
+  WalletIcon,
   XIcon,
 } from "@/components/icons";
 import { NotificationMenu } from "./notification-menu";
 import { ProfileMenu } from "./profile-menu";
+import { TahunAjaranProvider } from "./tahun-ajaran-context";
+import { TahunAjaranSelect } from "./tahun-ajaran-select";
 
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/panel", icon: HomeIcon },
-  { label: "Data Anak", href: "#", icon: UsersIcon },
-  { label: "Data Guru", href: "#", icon: UserIcon },
-  { label: "Kelas", href: "#", icon: GridIcon },
-  { label: "Kegiatan Belajar", href: "#", icon: BookIcon },
-  { label: "Penilaian", href: "#", icon: StarIcon },
-  { label: "Laporan", href: "#", icon: FileIcon },
-  { label: "Pengaturan", href: "#", icon: SettingsIcon },
+const DASHBOARD_ITEM = { label: "Dashboard", href: "/panel", icon: HomeIcon };
+
+const TABUNGAN_ITEM = { label: "Tabungan", href: "/panel/tabungan", icon: WalletIcon };
+
+const SEKOLAH_ITEM = { label: "Sekolah", href: "/panel/sekolah", icon: BuildingIcon };
+
+const ABSENSI_ITEM = { label: "Absensi", href: "/panel/absensi", icon: MapPinIcon };
+
+const LANGGANAN_ITEM = { label: "Langganan", href: "/panel/langganan", icon: WalletIcon };
+
+const MASTER_ITEMS = [
+  { label: "Guru", href: "/panel/guru", icon: UserIcon },
+  { label: "Admin Sekolah", href: "/panel/admin", icon: BuildingIcon },
+  { label: "Orang Tua", href: "/panel/orang-tua", icon: UsersIcon },
+  { label: "Murid", href: "/panel/murid", icon: UsersIcon },
+  { label: "Kelas", href: "/panel/kelas", icon: GridIcon },
 ];
 
-export function PanelShell({ children }: { children: ReactNode }) {
+const AGENDA_ITEMS = [
+  { label: "Event", href: "/panel/event", icon: StarIcon },
+  { label: "Kalender", href: "/panel/kalender", icon: CalendarIcon },
+];
+
+const SUPERADMIN_ITEMS = [
+  { label: "Kelola Sekolah", href: "/panel/kelola-sekolah", icon: BuildingIcon },
+  { label: "Tiket Kendala", href: "/panel/tiket", icon: FileIcon },
+];
+
+export function PanelShell({
+  children,
+  initialMe,
+  initialProfil,
+}: {
+  children: ReactNode;
+  initialMe?: MeResult | null;
+  initialProfil?: SekolahProfil | null;
+}) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [masterOpen, setMasterOpen] = useState(true);
+  const [role, setRole] = useState<string | null>(initialMe?.role ?? null);
+  const [profil, setProfil] = useState<SekolahProfil | null>(
+    initialProfil ?? null,
+  );
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      const res = await getJson<MeResult>("/api/auth/me");
+      if (!active || !res.ok) return;
+      setRole(res.data.role);
+      if (res.data.role !== "superadmin") {
+        const profilRes = await getJson<SekolahProfil>("/api/profil-sekolah");
+        if (active && profilRes.ok) setProfil(profilRes.data);
+      }
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!profil?.logo) return;
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = profil.logo;
+  }, [profil]);
+
+  const isManage = role === "kepala_sekolah" || role === "admin_sekolah";
+  const isGuru = role === "guru";
+  const isOrtu = role === "orang_tua";
+  const isSuperadmin = role === "superadmin";
+  const showDashboard = !isOrtu;
+  const showMaster = isManage;
+  const showTabungan = isManage || isOrtu;
+  const showAgenda = isManage || isGuru || isOrtu;
 
   return (
+    <TahunAjaranProvider enabled={isManage}>
     <div className="min-h-screen bg-slate-50 font-epaud text-slate-800">
       {/* Backdrop for the mobile sidebar */}
       {sidebarOpen ? (
@@ -55,7 +130,7 @@ export function PanelShell({ children }: { children: ReactNode }) {
         }`}
       >
         <div className="flex h-16 items-center justify-between px-5">
-          <LogoLockup compact />
+          <LogoLockup compact logo={profil?.logo} nama={profil?.nama} />
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
@@ -66,26 +141,106 @@ export function PanelShell({ children }: { children: ReactNode }) {
           </button>
         </div>
 
+        {isManage ? <TahunAjaranSelect /> : null}
+
         <nav className="mt-2 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                  active
-                    ? "bg-epaud-sky text-epaud-blue"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
+          {showDashboard ? (
+            <SidebarLink
+              item={DASHBOARD_ITEM}
+              active={pathname === DASHBOARD_ITEM.href}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
+          {showTabungan ? (
+            <SidebarLink
+              item={TABUNGAN_ITEM}
+              active={
+                pathname === TABUNGAN_ITEM.href ||
+                pathname.startsWith(`${TABUNGAN_ITEM.href}/`)
+              }
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
+          {isManage ? (
+            <SidebarLink
+              item={SEKOLAH_ITEM}
+              active={pathname === SEKOLAH_ITEM.href}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
+          {isManage || isGuru ? (
+            <SidebarLink
+              item={ABSENSI_ITEM}
+              active={pathname === ABSENSI_ITEM.href}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
+          {isManage ? (
+            <SidebarLink
+              item={LANGGANAN_ITEM}
+              active={pathname === LANGGANAN_ITEM.href}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
+          {showMaster ? (
+            <div>
+              <button
+                type="button"
+                onClick={() => setMasterOpen((value) => !value)}
+                aria-expanded={masterOpen}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
               >
-                <Icon className="size-5 shrink-0" />
-                {item.label}
-              </Link>
-            );
-          })}
+                <BookIcon className="size-5 shrink-0" />
+                Master Data
+                <ChevronDownIcon
+                  className={`ml-auto size-4 text-slate-400 transition-transform ${
+                    masterOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {masterOpen ? (
+                <div className="mt-1 space-y-1 border-l border-slate-100 pl-3">
+                  {MASTER_ITEMS.map((item) => (
+                    <SidebarLink
+                      key={item.label}
+                      item={item}
+                      indent
+                      active={pathname === item.href}
+                      onNavigate={() => setSidebarOpen(false)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {showAgenda
+            ? AGENDA_ITEMS.map((item) => (
+                <SidebarLink
+                  key={item.label}
+                  item={item}
+                  active={pathname === item.href}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+              ))
+            : null}
+
+          {isSuperadmin
+            ? SUPERADMIN_ITEMS.map((item) => (
+                <SidebarLink
+                  key={item.label}
+                  item={item}
+                  active={pathname === item.href}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+              ))
+            : null}
         </nav>
 
         <div className="border-t border-slate-100 p-4">
@@ -136,5 +291,44 @@ export function PanelShell({ children }: { children: ReactNode }) {
         </footer>
       </div>
     </div>
+    </TahunAjaranProvider>
+  );
+}
+
+type NavItem = {
+  label: string;
+  href: string;
+  icon: (props: { className?: string }) => ReactNode;
+};
+
+function SidebarLink({
+  item,
+  active,
+  indent = false,
+  onNavigate,
+}: {
+  item: NavItem;
+  active: boolean;
+  indent?: boolean;
+  onNavigate: () => void;
+}) {
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      className={`flex items-center gap-3 rounded-xl text-sm font-semibold transition ${
+        indent ? "px-3 py-2" : "px-3 py-2.5"
+      } ${
+        active
+          ? "bg-epaud-sky text-epaud-blue"
+          : indent
+            ? "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+      }`}
+    >
+      <Icon className={indent ? "size-4 shrink-0" : "size-5 shrink-0"} />
+      {item.label}
+    </Link>
   );
 }
