@@ -24,6 +24,8 @@ import {
 } from "@/components/icons";
 import { NotificationMenu } from "./notification-menu";
 import { ProfileMenu } from "./profile-menu";
+import { TahunAjaranProvider } from "./tahun-ajaran-context";
+import { TahunAjaranSelect } from "./tahun-ajaran-select";
 
 const DASHBOARD_ITEM = { label: "Dashboard", href: "/panel", icon: HomeIcon };
 
@@ -48,12 +50,22 @@ const SUPERADMIN_ITEMS = [
   { label: "Tiket Kendala", href: "/panel/tiket", icon: FileIcon },
 ];
 
-export function PanelShell({ children }: { children: ReactNode }) {
+export function PanelShell({
+  children,
+  initialMe,
+  initialProfil,
+}: {
+  children: ReactNode;
+  initialMe?: MeResult | null;
+  initialProfil?: SekolahProfil | null;
+}) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [masterOpen, setMasterOpen] = useState(true);
-  const [role, setRole] = useState<string | null>(null);
-  const [profil, setProfil] = useState<SekolahProfil | null>(null);
+  const [role, setRole] = useState<string | null>(initialMe?.role ?? null);
+  const [profil, setProfil] = useState<SekolahProfil | null>(
+    initialProfil ?? null,
+  );
 
   useEffect(() => {
     let active = true;
@@ -61,9 +73,6 @@ export function PanelShell({ children }: { children: ReactNode }) {
       const res = await getJson<MeResult>("/api/auth/me");
       if (!active || !res.ok) return;
       setRole(res.data.role);
-      if (res.data.nama_sekolah) {
-        document.title = res.data.nama_sekolah;
-      }
       if (res.data.role !== "superadmin") {
         const profilRes = await getJson<SekolahProfil>("/api/profil-sekolah");
         if (active && profilRes.ok) setProfil(profilRes.data);
@@ -96,6 +105,7 @@ export function PanelShell({ children }: { children: ReactNode }) {
   const showAgenda = isManage || isGuru || isOrtu;
 
   return (
+    <TahunAjaranProvider enabled={isManage}>
     <div className="min-h-screen bg-slate-50 font-epaud text-slate-800">
       {/* Backdrop for the mobile sidebar */}
       {sidebarOpen ? (
@@ -124,6 +134,8 @@ export function PanelShell({ children }: { children: ReactNode }) {
             <XIcon className="size-5" />
           </button>
         </div>
+
+        {isManage ? <TahunAjaranSelect /> : null}
 
         <nav className="mt-2 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           {showDashboard ? (
@@ -257,6 +269,7 @@ export function PanelShell({ children }: { children: ReactNode }) {
         </footer>
       </div>
     </div>
+    </TahunAjaranProvider>
   );
 }
 

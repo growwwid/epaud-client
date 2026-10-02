@@ -30,7 +30,7 @@ export function LogoLockup({
           className="h-11 w-auto"
         />
         <div className="text-left">
-          <p className="text-2xl font-extrabold leading-none tracking-tight text-epaud-blue">
+          <p className="text-xl font-extrabold leading-none tracking-tight text-epaud-blue">
             {sekolah ? nama : "ePAUD"}
           </p>
           <p className="mt-0.5 text-[10px] font-semibold leading-snug text-[#4a70ad]">
