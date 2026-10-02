@@ -24,6 +24,8 @@ import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
 import { PasswordInput } from "@/components/password-input";
 import { PhotoInput } from "@/components/photo-input";
 import { OrangTuaPicker } from "@/components/orang-tua-picker";
+import { CsvImport } from "@/components/csv-import";
+import { useTahunAjaran } from "../tahun-ajaran-context";
 
 type AnakRow = {
   id: string;
@@ -99,6 +101,7 @@ function initials(name: string) {
 
 export default function DataAnakPage() {
   const router = useRouter();
+  const { withTahunAjaran } = useTahunAjaran();
   const [rows, setRows] = useState<AnakRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -135,11 +138,11 @@ export default function DataAnakPage() {
   );
 
   useEffect(() => {
-    getJson<Murid[]>("/api/murid").then(applyMurid);
-  }, [applyMurid]);
+    getJson<Murid[]>(withTahunAjaran("/api/murid")).then(applyMurid);
+  }, [applyMurid, withTahunAjaran]);
 
   function reload() {
-    getJson<Murid[]>("/api/murid").then(applyMurid);
+    getJson<Murid[]>(withTahunAjaran("/api/murid")).then(applyMurid);
   }
 
   function applyStatus(id: string, status: string) {
@@ -330,6 +333,33 @@ export default function DataAnakPage() {
             <UserIcon className="size-5 text-slate-400" />
             Tambah Orang Tua
           </button>
+
+          <CsvImport
+            templateName="contoh-murid.csv"
+            headers={["nama", "nik", "nisn", "tanggal_lahir", "jenis_kelamin"]}
+            example={[
+              ["Aisyah Putri", "3201234567890002", "0123456789", "2020-03-15", "perempuan"],
+              ["Raka Pratama", "3201234567890003", "0123456790", "2019-11-02", "laki_laki"],
+            ]}
+            onImport={async (rows) => {
+              let ok = 0;
+              const errors: string[] = [];
+              for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const res = await postJson<Murid>("/api/murid", {
+                  nama: row.nama,
+                  nik: row.nik,
+                  nisn: row.nisn,
+                  tanggal_lahir: row.tanggal_lahir,
+                  jenis_kelamin: row.jenis_kelamin,
+                });
+                if (res.ok) ok++;
+                else errors.push(`Baris ${i + 2}: ${res.error.message}`);
+              }
+              if (ok > 0) reload();
+              return { ok, errors };
+            }}
+          />
 
           <button
             type="button"

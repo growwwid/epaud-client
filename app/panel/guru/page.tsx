@@ -21,6 +21,8 @@ import {
 import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
 import { PasswordInput } from "@/components/password-input";
 import { PhotoInput } from "@/components/photo-input";
+import { CsvImport } from "@/components/csv-import";
+import { useTahunAjaran } from "../tahun-ajaran-context";
 
 const JENIS_LABEL: Record<string, string> = {
   guru_kelas: "Guru Kelas",
@@ -45,6 +47,7 @@ function initials(name: string) {
 
 export default function DataGuruPage() {
   const router = useRouter();
+  const { withTahunAjaran } = useTahunAjaran();
   const [guru, setGuru] = useState<Guru[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,11 +79,11 @@ export default function DataGuruPage() {
   );
 
   useEffect(() => {
-    getJson<Guru[]>("/api/guru").then(applyGuru);
-  }, [applyGuru]);
+    getJson<Guru[]>(withTahunAjaran("/api/guru")).then(applyGuru);
+  }, [applyGuru, withTahunAjaran]);
 
   function reload() {
-    getJson<Guru[]>("/api/guru").then(applyGuru);
+    getJson<Guru[]>(withTahunAjaran("/api/guru")).then(applyGuru);
   }
 
   const filtered = useMemo(() => {
@@ -189,6 +192,35 @@ export default function DataGuruPage() {
               </>
             ) : null}
           </div>
+
+          <CsvImport
+            templateName="contoh-guru.csv"
+            headers={["nama", "jenis", "nik", "nip", "email", "phone", "password"]}
+            example={[
+              ["Budi Santoso", "guru_kelas", "3201234567890001", "1987654321", "budi@sekolah.id", "081234567890", "rahasia123"],
+              ["Siti Aminah", "guru_pendamping", "", "", "siti@sekolah.id", "081298765432", ""],
+            ]}
+            onImport={async (rows) => {
+              let ok = 0;
+              const errors: string[] = [];
+              for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const res = await postJson<{ guru: Guru }>("/api/guru", {
+                  nama: row.nama,
+                  jenis: row.jenis,
+                  nik: row.nik,
+                  nip: row.nip,
+                  email: row.email,
+                  phone: row.phone,
+                  password: row.password,
+                });
+                if (res.ok) ok++;
+                else errors.push(`Baris ${i + 2}: ${res.error.message}`);
+              }
+              if (ok > 0) reload();
+              return { ok, errors };
+            }}
+          />
 
           <button
             type="button"
@@ -441,6 +473,7 @@ function GuruFormModal({
       email: String(data.get("email") ?? "").trim(),
       phone: String(data.get("phone") ?? "").trim(),
       password: String(data.get("password") ?? ""),
+      foto: String(data.get("foto") ?? ""),
     };
 
     if (!payload.nama) {

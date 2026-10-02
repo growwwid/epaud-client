@@ -276,6 +276,15 @@ export function DownloadIcon({ className }: IconProps) {
   );
 }
 
+export function UploadIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M12 20V9m0 0 4 4m-4-4-4 4" />
+      <path d="M5 5h14" />
+    </svg>
+  );
+}
+
 export function CalendarIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
@@ -299,6 +308,52 @@ export function MapPinIcon({ className }: IconProps) {
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
       <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z" />
       <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+
+export function GlobeIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.5 12h17M12 3.5c2.3 2.3 3.5 5.3 3.5 8.5s-1.2 6.2-3.5 8.5c-2.3-2.3-3.5-5.3-3.5-8.5S9.7 5.8 12 3.5Z" />
+    </svg>
+  );
+}
+
+export function WhatsAppIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M20.5 11.6A8.5 8.5 0 0 1 7.9 19.3L3.5 20.5l1.2-4.3A8.5 8.5 0 1 1 20.5 11.6Z" />
+      <path d="M8.8 8.3c.2-.5.4-.5.6-.5h.5c.2 0 .4 0 .6.4l.7 1.6c.1.2 0 .4-.1.6l-.4.5c-.1.2-.2.3-.1.5.4.7 1.1 1.4 1.9 1.8.2.1.3 0 .5-.1l.5-.6c.2-.2.3-.2.6-.1l1.5.7c.3.2.4.3.4.5v.4c0 .5-.5 1.1-1 1.2-.5.1-1.1.2-3.1-.7-2.1-1-3.4-3-3.5-3.2-.1-.2-.8-1.1-.8-2 0-.9.5-1.4.7-1.6Z" />
+    </svg>
+  );
+}
+
+export function PencilIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z" />
+      <path d="M13.5 6.5l4 4" />
+    </svg>
+  );
+}
+
+export function ImageIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <circle cx="9" cy="9.5" r="1.6" />
+      <path d="M4.5 17l4.5-4.5 4 4 2.5-2.5 4 4" />
+    </svg>
+  );
+}
+
+export function BadgeCheckIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M12 3.2l2.1 1.6 2.6-.2 1 2.4 2.3 1.2-.6 2.6.8 2.5-2 1.7-.5 2.6-2.6.3-1.8 1.9-2.4-1-2.5.6-1.4-2.3L4 16.1l.4-2.6L3 11l2.2-1.4.6-2.6 2.6.2L12 3.2Z" />
+      <path d="M8.8 12.2l2.1 2.1 4.3-4.3" />
     </svg>
   );
 }

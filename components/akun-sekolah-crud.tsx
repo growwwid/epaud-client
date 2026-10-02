@@ -30,6 +30,8 @@ import {
 } from "@/components/crud-ui";
 import { PasswordInput } from "@/components/password-input";
 import { PhotoInput } from "@/components/photo-input";
+import { CsvImport } from "@/components/csv-import";
+import { splitList } from "@/components/csv";
 import { PlusIcon } from "@/components/icons";
 
 export function AkunSekolahCrud({
@@ -120,6 +122,36 @@ export function AkunSekolahCrud({
             placeholder="Cari nama, email, atau no. HP..."
             className="h-11 min-w-[14rem] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:bg-white focus:ring-4 focus:ring-epaud-blue/10"
           />
+          {isOrtu ? (
+            <CsvImport
+              templateName="contoh-orang-tua.csv"
+              headers={["nama", "nik", "email", "phone", "password", "anak_nik"]}
+              example={[
+                ["Siti Rahayu", "3201234567890004", "siti@email.id", "081234567891", "rahasia123", "3201234567890002;3201234567890003"],
+                ["Andi Wijaya", "", "andi@email.id", "081234567892", "", ""],
+              ]}
+              onImport={async (rows) => {
+                let ok = 0;
+                const errors: string[] = [];
+                for (let i = 0; i < rows.length; i++) {
+                  const row = rows[i];
+                  const res = await postJson<AkunResult>("/api/orang-tua", {
+                    nama: row.nama,
+                    nik: row.nik,
+                    email: row.email,
+                    phone: row.phone,
+                    password: row.password,
+                    anak_nik: splitList(row.anak_nik ?? ""),
+                  });
+                  if (res.ok) ok++;
+                  else errors.push(`Baris ${i + 2}: ${res.error.message}`);
+                }
+                if (ok > 0) reload();
+                return { ok, errors };
+              }}
+            />
+          ) : null}
+
           {allowCreate ? (
             <button
               type="button"
@@ -441,6 +473,7 @@ function AkunForm({
         email,
         phone,
         password,
+        foto: String(data.get("foto") ?? ""),
       });
       setSubmitting(false);
       if (res.ok) onSaved(nama);
@@ -448,7 +481,13 @@ function AkunForm({
       return;
     }
 
-    const body: Record<string, unknown> = { nama, email, phone, password };
+    const body: Record<string, unknown> = {
+      nama,
+      email,
+      phone,
+      password,
+      foto: String(data.get("foto") ?? ""),
+    };
     if (isOrtu) {
       body.nik = String(data.get("nik") ?? "").trim();
       body.anak_nik = String(data.get("anak_nik") ?? "")
