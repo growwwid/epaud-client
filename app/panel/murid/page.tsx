@@ -108,6 +108,7 @@ export default function DataAnakPage() {
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
 
   const [query, setQuery] = useState("");
   const [kelasFilter, setKelasFilter] = useState("all");
@@ -202,6 +203,44 @@ export default function DataAnakPage() {
     });
   }
 
+  async function runBulk(
+    action: (id: string) => Promise<ApiResult<unknown>>,
+    label: string,
+  ) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    setBulkOpen(false);
+    let ok = 0;
+    let firstError: string | null = null;
+    for (const id of ids) {
+      const res = await action(id);
+      if (res.ok) ok++;
+      else if (!firstError) firstError = res.error.message;
+    }
+    setSelected(new Set());
+    reload();
+    setNotice(
+      `${ok} dari ${ids.length} data berhasil ${label}.${
+        firstError ? ` Gagal: ${firstError}` : ""
+      }`,
+    );
+  }
+
+  function bulkChangeStatus(status: string) {
+    setBulkStatusOpen(false);
+    runBulk(
+      (id) => patchJson<Murid>(`/api/murid/${id}/status`, { status }),
+      "diubah statusnya",
+    );
+  }
+
+  async function bulkRemove() {
+    const count = selected.size;
+    if (count === 0) return;
+    if (!window.confirm(`Keluarkan ${count} anak terpilih?`)) return;
+    runBulk((id) => deleteJson(`/api/murid/${id}`), "dikeluarkan");
+  }
+
   return (
     <div className="space-y-5">
       {/* Page header */}
@@ -240,17 +279,25 @@ export default function DataAnakPage() {
                   className="fixed inset-0 z-40 cursor-default"
                 />
                 <div className="absolute left-0 z-50 mt-2 w-52 rounded-2xl border border-slate-100 bg-white p-2 shadow-2xl shadow-slate-900/10">
-                  {["Ubah Status", "Hapus"].map((label) => (
-                    <span
-                      key={label}
-                      className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold text-slate-400"
-                    >
-                      {label}
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-400">
-                        segera
-                      </span>
-                    </span>
-                  ))}
+                  <button
+                    type="button"
+                    disabled={selected.size === 0}
+                    onClick={() => {
+                      setBulkOpen(false);
+                      setBulkStatusOpen(true);
+                    }}
+                    className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                  >
+                    Ubah Status
+                  </button>
+                  <button
+                    type="button"
+                    disabled={selected.size === 0}
+                    onClick={bulkRemove}
+                    className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                  >
+                    Hapus
+                  </button>
                 </div>
               </>
             ) : null}
@@ -622,6 +669,28 @@ export default function DataAnakPage() {
             setNotice("Anak berhasil dikeluarkan.");
           }}
         />
+      ) : null}
+
+      {bulkStatusOpen ? (
+        <Modal
+          title="Ubah Status Massal"
+          subtitle={`${selected.size} anak terpilih.`}
+          onClose={() => setBulkStatusOpen(false)}
+        >
+          <div className="mt-5 space-y-4">
+            {(["aktif", "alumni", "keluar"] as const).map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => bulkChangeStatus(status)}
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-epaud-blue hover:bg-epaud-sky/40"
+              >
+                {STATUS_LABEL[status]}
+                <ChevronDownIcon className="size-4 -rotate-90 text-slate-400" />
+              </button>
+            ))}
+          </div>
+        </Modal>
       ) : null}
     </div>
   );
