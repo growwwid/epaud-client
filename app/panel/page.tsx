@@ -7,6 +7,7 @@ import { getEnvelope, getJson, type Guru, type MeResult, type Murid, type Tabung
 import { MiniCalendar, dateKey } from "@/components/mini-calendar";
 import { StatCard } from "@/components/stat-card";
 import { DUMMY_EVENTS } from "@/components/dummy-data";
+import { useTahunAjaran } from "./tahun-ajaran-context";
 import {
   CalendarIcon,
   ClockIcon,
@@ -46,6 +47,7 @@ const jam = new Intl.DateTimeFormat("id-ID", {
 
 export default function PanelPage() {
   const router = useRouter();
+  const { withTahunAjaran } = useTahunAjaran();
   const [me, setMe] = useState<MeResult | null>(null);
   const [jumlahGuru, setJumlahGuru] = useState<number | null>(null);
   const [jumlahMurid, setJumlahMurid] = useState<number | null>(null);
@@ -71,9 +73,11 @@ export default function PanelPage() {
 
       if (MANAGE_ROLES.includes(role)) {
         const [guruRes, muridRes, rekapRes] = await Promise.all([
-          getJson<Guru[]>("/api/guru"),
-          getJson<Murid[]>("/api/murid"),
-          getEnvelope<TabunganRekap>("/api/tabungan/rekap?page=1&size=1"),
+          getJson<Guru[]>(withTahunAjaran("/api/guru")),
+          getJson<Murid[]>(withTahunAjaran("/api/murid")),
+          getEnvelope<TabunganRekap>(
+            withTahunAjaran("/api/tabungan/rekap?page=1&size=1"),
+          ),
         ]);
         if (!active) return;
         if (guruRes.ok) setJumlahGuru(Array.isArray(guruRes.data) ? guruRes.data.length : 0);
@@ -89,7 +93,7 @@ export default function PanelPage() {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [router, withTahunAjaran]);
 
   const upcoming = useMemo(() => {
     const today = dateKey(new Date());

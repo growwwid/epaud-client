@@ -190,7 +190,27 @@ export type SekolahProfil = {
   npsn: string;
   tipe: string;
   alamat: string;
+  status?: string;
   logo?: string;
+  jenjang: string;
+  status_satuan: string;
+  tahun_berdiri: number;
+  kepala_sekolah: string;
+  akreditasi: string;
+  tahun_akreditasi: number;
+  deskripsi: string;
+  tagline: string;
+  telepon: string;
+  whatsapp: string;
+  email: string;
+  website: string;
+  latitude: number;
+  longitude: number;
+  maps_url: string;
+  visi: string;
+  misi: string[];
+  motto: string;
+  nilai: string[];
 };
 
 export type TabunganRekap = {

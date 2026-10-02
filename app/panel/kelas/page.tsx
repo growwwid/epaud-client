@@ -27,20 +27,23 @@ import {
 } from "@/components/crud-ui";
 import { GridIcon, PlusIcon } from "@/components/icons";
 import { KelasAnggotaModal } from "./kelas-anggota-modal";
+import { useTahunAjaran } from "../tahun-ajaran-context";
 
 export default function KelasPage() {
   const router = useRouter();
+  const { list: tahunAjaran, selectedId, reload: reloadTahunAjaran } = useTahunAjaran();
   const [items, setItems] = useState<Kelas[]>([]);
-  const [tahunAjaran, setTahunAjaran] = useState<TahunAjaran[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const [taFilter, setTaFilter] = useState("all");
+  const [taOverride, setTaOverride] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Kelas | null>(null);
   const [managing, setManaging] = useState<Kelas | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const taFilter = taOverride ?? (selectedId || "all");
 
   const taName = useCallback(
     (id: string) => tahunAjaran.find((ta) => ta.id === id)?.nama ?? "—",
@@ -68,12 +71,6 @@ export default function KelasPage() {
     },
     [apply],
   );
-
-  useEffect(() => {
-    getJson<TahunAjaran[]>("/api/tahun-ajaran").then((res) => {
-      if (res.ok) setTahunAjaran(Array.isArray(res.data) ? res.data : []);
-    });
-  }, []);
 
   useEffect(() => {
     load(taFilter);
@@ -110,7 +107,7 @@ export default function KelasPage() {
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={taFilter}
-            onChange={(event) => setTaFilter(event.target.value)}
+            onChange={(event) => setTaOverride(event.target.value)}
             className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 outline-none focus:border-epaud-blue"
           >
             <option value="all">Semua tahun ajaran</option>
@@ -214,7 +211,7 @@ export default function KelasPage() {
       {formOpen ? (
         <KelasForm
           tahunAjaran={tahunAjaran}
-          onTahunAjaranCreated={(ta) => setTahunAjaran((prev) => [...prev, ta])}
+          onTahunAjaranCreated={() => reloadTahunAjaran()}
           onClose={() => setFormOpen(false)}
           onSaved={() => {
             setFormOpen(false);
@@ -228,7 +225,7 @@ export default function KelasPage() {
         <KelasForm
           item={editing}
           tahunAjaran={tahunAjaran}
-          onTahunAjaranCreated={(ta) => setTahunAjaran((prev) => [...prev, ta])}
+          onTahunAjaranCreated={() => reloadTahunAjaran()}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ChevronDownIcon, XIcon } from "./icons";
 
@@ -96,8 +97,12 @@ export function Panel({ children }: { children: ReactNode }) {
 }
 
 export function ErrorText({ children }: { children: ReactNode }) {
+  const shown = useRef<string | null>(null);
   useEffect(() => {
-    if (children) toast.error(String(children));
+    if (children && shown.current !== String(children)) {
+      shown.current = String(children);
+      toast.error(String(children));
+    }
   }, [children]);
   return (
     <p
@@ -110,8 +115,12 @@ export function ErrorText({ children }: { children: ReactNode }) {
 }
 
 export function Notice({ children }: { children: ReactNode; onClose?: () => void }) {
+  const shown = useRef<string | null>(null);
   useEffect(() => {
-    if (children) toast.success(String(children));
+    if (children && shown.current !== String(children)) {
+      shown.current = String(children);
+      toast.success(String(children));
+    }
   }, [children]);
   return null;
 }
@@ -129,7 +138,8 @@ export function Modal({
   children: ReactNode;
   wide?: boolean;
 }) {
-  return (
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <button
         type="button"
@@ -160,7 +170,8 @@ export function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
