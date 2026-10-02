@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getJson, patchJson, type MeResult } from "@/components/api";
@@ -14,7 +14,7 @@ import {
 } from "@/components/crud-ui";
 import { PasswordInput } from "@/components/password-input";
 import { PhotoInput } from "@/components/photo-input";
-import { UserIcon } from "@/components/icons";
+import { GoogleIcon, UserIcon } from "@/components/icons";
 
 const ROLE_LABEL: Record<string, string> = {
   superadmin: "Superadmin",
@@ -29,21 +29,63 @@ export default function ProfilPage() {
   const [me, setMe] = useState<MeResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const loadMe = useCallback(() => {
     getJson<MeResult>("/api/auth/me").then((res) => {
-      if (!active) return;
       if (res.ok) setMe(res.data);
       else if (res.status === 401) router.replace("/login");
       else setError(res.error.message);
       setLoading(false);
     });
-    return () => {
-      active = false;
-    };
   }, [router]);
+
+  useEffect(() => {
+    loadMe();
+  }, [loadMe]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("google");
+    if (status === "linked") toast.success("Akun Google berhasil ditautkan.");
+    else if (status === "error") toast.error("Gagal menautkan akun Google.");
+    if (status) {
+      window.history.replaceState({}, "", "/panel/profil");
+      loadMe();
+    }
+  }, [loadMe]);
+
+  async function linkGoogle() {
+    setGoogleBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/google/link");
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.data?.url) {
+        setError(payload?.error?.message ?? "Google belum dikonfigurasi.");
+        setGoogleBusy(false);
+        return;
+      }
+      window.location.href = payload.data.url as string;
+    } catch {
+      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setGoogleBusy(false);
+    }
+  }
+
+  async function unlinkGoogle() {
+    if (!window.confirm("Lepas tautan akun Google?")) return;
+    setGoogleBusy(true);
+    const res = await fetch("/api/auth/google/unlink", { method: "POST" });
+    setGoogleBusy(false);
+    if (res.ok) {
+      toast.success("Tautan akun Google dilepas.");
+      loadMe();
+    } else {
+      toast.error("Gagal melepas tautan akun Google.");
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -159,6 +201,47 @@ export default function ProfilPage() {
           </form>
         )}
       </Panel>
+
+      {!loading && me ? (
+        <Panel>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-slate-100">
+                <GoogleIcon className="size-5" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-slate-700">
+                  Akun Google
+                </p>
+                <p className="text-[13px] text-slate-500">
+                  {me.google_linked
+                    ? "Tertaut. Anda bisa login dengan Google."
+                    : "Belum tertaut. Tautkan agar bisa login tanpa password."}
+                </p>
+              </div>
+            </div>
+            {me.google_linked ? (
+              <button
+                type="button"
+                onClick={unlinkGoogle}
+                disabled={googleBusy}
+                className="h-11 rounded-xl border border-red-200 px-5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+              >
+                Lepas Tautan
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={linkGoogle}
+                disabled={googleBusy}
+                className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                {googleBusy ? "Mengalihkan…" : "Tautkan Google"}
+              </button>
+            )}
+          </div>
+        </Panel>
+      ) : null}
     </div>
   );
 }

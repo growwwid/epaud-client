@@ -17,6 +17,7 @@ export type MeResult = {
   role: string;
   must_change_password: boolean;
   foto?: string;
+  google_linked?: boolean;
 };
 
 export type Guru = {

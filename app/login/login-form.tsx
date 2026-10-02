@@ -20,6 +20,27 @@ export function LoginForm({
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  async function handleGoogle() {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      const res = await fetch("/api/auth/google");
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.data?.url) {
+        setError(
+          payload?.error?.message ?? "Login Google belum dikonfigurasi.",
+        );
+        setGoogleLoading(false);
+        return;
+      }
+      window.location.href = payload.data.url as string;
+    } catch {
+      setError("Tidak dapat menghubungi server. Coba lagi.");
+      setGoogleLoading(false);
+    }
+  }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
@@ -177,10 +198,12 @@ export function LoginForm({
 
       <button
         type="button"
-        className="mt-6 flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 text-base font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/15"
+        onClick={handleGoogle}
+        disabled={googleLoading}
+        className="mt-6 flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 text-base font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-epaud-blue/15 disabled:opacity-60"
       >
         <GoogleIcon className="size-5" />
-        Masuk dengan Google
+        {googleLoading ? "Mengalihkan…" : "Masuk dengan Google"}
       </button>
 
       <p className="mt-7 text-center text-sm text-slate-500">
