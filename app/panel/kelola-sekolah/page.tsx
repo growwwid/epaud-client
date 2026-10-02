@@ -22,7 +22,7 @@ import {
   PageHeader,
   Panel,
 } from "@/components/crud-ui";
-import { BuildingIcon, UploadIcon } from "@/components/icons";
+import { BuildingIcon, DownloadIcon, UploadIcon } from "@/components/icons";
 
 const STATUS_BADGE: Record<string, string> = {
   active: "bg-emerald-50 text-emerald-600",
@@ -205,10 +205,35 @@ function ImportKalenderModal({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportKalenderResult | null>(null);
 
+  function downloadExample() {
+    const example = {
+      metadata: {
+        tahun_pelajaran: "2026/2027",
+        jenjang: "TK",
+        timezone: "Asia/Jakarta",
+        source: { name: "Dinas Pendidikan", nomor_surat: "421/001/2026" },
+      },
+      data: [
+        { date: "2026-07-15", name: "Awal Tahun Ajaran", category: "kegiatan" },
+        { date: "2026-08-17", name: "HUT Kemerdekaan RI", category: "libur" },
+      ],
+      kegiatan_tanpa_tanggal_spesifik: [],
+    };
+    const blob = new Blob([JSON.stringify(example, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "contoh-kalender.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!file) {
-      setError("Pilih berkas kalender (.ics) terlebih dahulu.");
+      setError("Pilih berkas kalender (JSON) terlebih dahulu.");
       return;
     }
     setError(null);
@@ -236,7 +261,7 @@ function ImportKalenderModal({
   return (
     <Modal
       title="Import Kalender Akademik"
-      subtitle={`Untuk ${school.nama}. Format .ics.`}
+      subtitle={`Untuk ${school.nama}. Format JSON.`}
       onClose={onClose}
     >
       {result ? (
@@ -258,10 +283,18 @@ function ImportKalenderModal({
         </div>
       ) : (
         <form className="mt-5 space-y-4" onSubmit={submit} noValidate>
-          <Field label="Berkas kalender (.ics) *">
+          <button
+            type="button"
+            onClick={downloadExample}
+            className="flex items-center gap-2 text-sm font-semibold text-epaud-blue hover:underline"
+          >
+            <DownloadIcon className="size-4" />
+            Unduh contoh JSON
+          </button>
+          <Field label="Berkas kalender (JSON) *">
             <input
               type="file"
-              accept=".ics,text/calendar"
+              accept=".json,application/json"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-epaud-sky file:px-4 file:py-2 file:text-sm file:font-semibold file:text-epaud-blue"
             />
