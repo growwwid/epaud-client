@@ -36,6 +36,8 @@ const SEKOLAH_ITEM = { label: "Sekolah", href: "/panel/sekolah", icon: BuildingI
 
 const ABSENSI_ITEM = { label: "Absensi", href: "/panel/absensi", icon: MapPinIcon };
 
+const LANGGANAN_ITEM = { label: "Langganan", href: "/panel/langganan", icon: WalletIcon };
+
 const MASTER_ITEMS = [
   { label: "Guru", href: "/panel/guru", icon: UserIcon },
   { label: "Admin Sekolah", href: "/panel/admin", icon: BuildingIcon },
@@ -173,6 +175,14 @@ export function PanelShell({
             <SidebarLink
               item={ABSENSI_ITEM}
               active={pathname === ABSENSI_ITEM.href}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
+          {isManage ? (
+            <SidebarLink
+              item={LANGGANAN_ITEM}
+              active={pathname === LANGGANAN_ITEM.href}
               onNavigate={() => setSidebarOpen(false)}
             />
           ) : null}

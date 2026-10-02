@@ -240,6 +240,28 @@ export type TabunganRekap = {
 
 export type TransaksiList = { data: Transaksi[]; meta: ListMeta };
 
+export type Paket = {
+  id: string;
+  kode: string;
+  nama: string;
+  harga: number;
+  aktif: boolean;
+};
+
+export type Langganan = {
+  sekolah_id: string;
+  paket_kode: string;
+  paket_nama: string;
+  status: string;
+  tanggal_mulai?: string | null;
+  tanggal_berakhir?: string | null;
+};
+
+export type LanggananRingkasan = {
+  langganan: Langganan;
+  paket: Paket[];
+};
+
 export type AbsensiLokasi = {
   latitude: number;
   longitude: number;
