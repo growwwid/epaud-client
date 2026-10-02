@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getJson, patchJson, postJson, type MeResult } from "@/components/api";
 import {
@@ -47,20 +48,22 @@ export function ProfileMenu() {
   const [me, setMe] = useState<MeResult | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const loadMe = useCallback(() => {
     getJson<MeResult>("/api/auth/me").then((result) => {
-      if (!active) return;
-      if (result.ok) {
-        setMe(result.data);
-      } else if (result.status === 401) {
-        router.replace("/login");
-      }
+      if (result.ok) setMe(result.data);
+      else if (result.status === 401) router.replace("/login");
     });
-    return () => {
-      active = false;
-    };
   }, [router]);
+
+  useEffect(() => {
+    loadMe();
+  }, [loadMe]);
+
+  useEffect(() => {
+    const onProfil = () => loadMe();
+    window.addEventListener("epaud:profil", onProfil);
+    return () => window.removeEventListener("epaud:profil", onProfil);
+  }, [loadMe]);
 
   useEffect(() => {
     if (!open) return;
@@ -134,14 +137,14 @@ export function ProfileMenu() {
 
       {open ? (
         <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-slate-100 bg-white p-2 shadow-2xl shadow-slate-900/10">
-          <button
-            type="button"
+          <Link
+            href="/panel/profil"
             onClick={() => setOpen(false)}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             <UserIcon className="size-5 text-slate-400" />
             Profile
-          </button>
+          </Link>
 
           <div className="my-1.5 h-px bg-slate-100" />
 
