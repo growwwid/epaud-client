@@ -1,67 +1,57 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { ComponentType } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
-  BellIcon,
-  BookIcon,
-  CheckIcon,
-  FileIcon,
-  StarIcon,
-  UsersIcon,
-} from "@/components/icons";
+  getJson,
+  postJson,
+  type Notifikasi,
+  type NotifikasiList,
+} from "@/components/api";
+import { BellIcon, CheckIcon, FileIcon } from "@/components/icons";
 
-type IconComponent = ComponentType<{ className?: string }>;
-
-type Notification = {
-  id: string;
-  title: string;
-  description: string;
-  icon: IconComponent;
-  read: boolean;
-  action?: { label: string; tone: "primary" | "dark" };
-};
-
-const INITIAL_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n1",
-    title: "Data anak baru ditambahkan",
-    description:
-      "Ananda Bunga Lestari ditambahkan ke Kelompok A oleh Ibu Sari.",
-    icon: UsersIcon,
-    read: false,
-  },
-  {
-    id: "n2",
-    title: "Kegiatan belajar diperbarui",
-    description: "Tema: Binatang di Sekitar Kita. Lihat detail kegiatannya.",
-    icon: BookIcon,
-    read: false,
-    action: { label: "Lihat kegiatan", tone: "primary" },
-  },
-  {
-    id: "n3",
-    title: "Penilaian anak disimpan",
-    description: "Penilaian Ananda Rafa Pratama (Kelompok B) telah disimpan.",
-    icon: StarIcon,
-    read: true,
-  },
-  {
-    id: "n4",
-    title: "Pengingat laporan bulanan",
-    description: "Laporan perkembangan September 2026 menunggu untuk diisi.",
-    icon: FileIcon,
-    read: false,
-    action: { label: "Isi laporan", tone: "dark" },
-  },
-];
+function relativeTime(iso: string) {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const diff = Date.now() - then;
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) return "baru saja";
+  if (diff < hour) return `${Math.floor(diff / minute)} menit lalu`;
+  if (diff < day) return `${Math.floor(diff / hour)} jam lalu`;
+  if (diff < 7 * day) return `${Math.floor(diff / day)} hari lalu`;
+  return new Date(iso).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export function NotificationMenu() {
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [items, setItems] = useState<Notifikasi[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const unreadCount = notifications.filter((item) => !item.read).length;
+  const load = useCallback(() => {
+    getJson<NotifikasiList>("/api/notifikasi").then((res) => {
+      if (res.ok) {
+        setItems(Array.isArray(res.data.items) ? res.data.items : []);
+        setUnread(res.data.unread ?? 0);
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (open) load();
+  }, [open, load]);
 
   useEffect(() => {
     if (!open) return;
@@ -87,16 +77,20 @@ export function NotificationMenu() {
     };
   }, [open]);
 
-  function markAllRead() {
-    setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+  async function markAllRead() {
+    if (unread === 0) return;
+    setItems((prev) => prev.map((item) => ({ ...item, is_read: true })));
+    setUnread(0);
+    await postJson("/api/notifikasi/baca", {});
   }
 
-  function toggleRead(id: string) {
-    setNotifications((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, read: !item.read } : item,
-      ),
+  async function markRead(item: Notifikasi) {
+    if (item.is_read) return;
+    setItems((prev) =>
+      prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n)),
     );
+    setUnread((value) => Math.max(0, value - 1));
+    await postJson("/api/notifikasi/baca", { id: item.id });
   }
 
   return (
@@ -114,9 +108,9 @@ export function NotificationMenu() {
         }`}
       >
         <BellIcon className="size-6" />
-        {unreadCount > 0 ? (
+        {unread > 0 ? (
           <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-            {unreadCount}
+            {unread > 9 ? "9+" : unread}
           </span>
         ) : null}
       </button>
@@ -128,7 +122,7 @@ export function NotificationMenu() {
             <button
               type="button"
               onClick={markAllRead}
-              disabled={unreadCount === 0}
+              disabled={unread === 0}
               className="text-xs font-semibold text-epaud-blue transition hover:underline disabled:cursor-not-allowed disabled:text-slate-300 disabled:no-underline"
             >
               Tandai semua sebagai sudah dibaca
@@ -136,69 +130,81 @@ export function NotificationMenu() {
           </div>
 
           <div className="max-h-[min(70vh,520px)] space-y-2 overflow-y-auto pr-0.5">
-            {notifications.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.id}
-                  className="flex gap-3 rounded-2xl border border-slate-100 bg-white p-3.5 shadow-[0_2px_12px_-6px_rgba(15,23,42,0.28)]"
-                >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-epaud-sky text-epaud-blue">
-                    <Icon className="size-5" />
-                  </span>
+            {loading ? (
+              <p className="px-2 py-6 text-center text-sm text-slate-400">
+                Memuat…
+              </p>
+            ) : items.length === 0 ? (
+              <p className="px-2 py-6 text-center text-sm text-slate-400">
+                Belum ada notifikasi.
+              </p>
+            ) : (
+              items.map((item) => {
+                const Icon = item.jenis === "tiket" ? FileIcon : BellIcon;
+                const title = item.link ? (
+                  <Link
+                    href={item.link}
+                    onClick={() => {
+                      markRead(item);
+                      setOpen(false);
+                    }}
+                    className="hover:underline"
+                  >
+                    {item.judul}
+                  </Link>
+                ) : (
+                  item.judul
+                );
+                return (
+                  <div
+                    key={item.id}
+                    className="flex gap-3 rounded-2xl border border-slate-100 bg-white p-3.5 shadow-[0_2px_12px_-6px_rgba(15,23,42,0.28)]"
+                  >
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-epaud-sky text-epaud-blue">
+                      <Icon className="size-5" />
+                    </span>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-2">
-                      {!item.read ? (
-                        <span className="mt-[7px] size-2 shrink-0 rounded-full bg-red-500" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-2">
+                        {!item.is_read ? (
+                          <span className="mt-[7px] size-2 shrink-0 rounded-full bg-red-500" />
+                        ) : null}
+                        <p
+                          className={`flex-1 text-sm ${
+                            item.is_read
+                              ? "font-medium text-slate-500"
+                              : "font-semibold text-slate-800"
+                          }`}
+                        >
+                          {title}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => markRead(item)}
+                          aria-label="Tandai sudah dibaca"
+                          className={`mt-0.5 shrink-0 rounded-md p-0.5 transition ${
+                            item.is_read
+                              ? "text-emerald-500"
+                              : "text-slate-300 hover:text-epaud-blue"
+                          }`}
+                        >
+                          <CheckIcon className="size-4" />
+                        </button>
+                      </div>
+
+                      {item.deskripsi ? (
+                        <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
+                          {item.deskripsi}
+                        </p>
                       ) : null}
-                      <p
-                        className={`flex-1 text-sm ${
-                          item.read
-                            ? "font-medium text-slate-500"
-                            : "font-semibold text-slate-800"
-                        }`}
-                      >
-                        {item.title}
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        {relativeTime(item.created_at)}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => toggleRead(item.id)}
-                        aria-label={
-                          item.read
-                            ? "Tandai belum dibaca"
-                            : "Tandai sudah dibaca"
-                        }
-                        className={`mt-0.5 shrink-0 rounded-md p-0.5 transition ${
-                          item.read
-                            ? "text-emerald-500"
-                            : "text-slate-300 hover:text-epaud-blue"
-                        }`}
-                      >
-                        <CheckIcon className="size-4" />
-                      </button>
                     </div>
-
-                    <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-                      {item.description}
-                    </p>
-
-                    {item.action ? (
-                      <button
-                        type="button"
-                        className={`mt-3 inline-flex h-9 items-center rounded-xl px-4 text-sm font-semibold text-white transition ${
-                          item.action.tone === "primary"
-                            ? "bg-epaud-blue hover:bg-epaud-blue-dark"
-                            : "bg-slate-900 hover:bg-slate-800"
-                        }`}
-                      >
-                        {item.action.label}
-                      </button>
-                    ) : null}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       ) : null}

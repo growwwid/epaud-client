@@ -240,6 +240,18 @@ export type TabunganRekap = {
 
 export type TransaksiList = { data: Transaksi[]; meta: ListMeta };
 
+export type Notifikasi = {
+  id: string;
+  jenis: string;
+  judul: string;
+  deskripsi: string;
+  link?: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+export type NotifikasiList = { items: Notifikasi[]; unread: number };
+
 export type Tiket = {
   id: string;
   akun_id?: string;
