@@ -14,6 +14,7 @@ import {
   FileIcon,
   GridIcon,
   HomeIcon,
+  MapPinIcon,
   MenuIcon,
   SearchIcon,
   StarIcon,
@@ -32,6 +33,8 @@ const DASHBOARD_ITEM = { label: "Dashboard", href: "/panel", icon: HomeIcon };
 const TABUNGAN_ITEM = { label: "Tabungan", href: "/panel/tabungan", icon: WalletIcon };
 
 const SEKOLAH_ITEM = { label: "Sekolah", href: "/panel/sekolah", icon: BuildingIcon };
+
+const ABSENSI_ITEM = { label: "Absensi", href: "/panel/absensi", icon: MapPinIcon };
 
 const MASTER_ITEMS = [
   { label: "Guru", href: "/panel/guru", icon: UserIcon },
@@ -162,6 +165,14 @@ export function PanelShell({
             <SidebarLink
               item={SEKOLAH_ITEM}
               active={pathname === SEKOLAH_ITEM.href}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          ) : null}
+
+          {isManage || isGuru ? (
+            <SidebarLink
+              item={ABSENSI_ITEM}
+              active={pathname === ABSENSI_ITEM.href}
               onNavigate={() => setSidebarOpen(false)}
             />
           ) : null}

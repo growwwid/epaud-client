@@ -240,6 +240,35 @@ export type TabunganRekap = {
 
 export type TransaksiList = { data: Transaksi[]; meta: ListMeta };
 
+export type AbsensiLokasi = {
+  latitude: number;
+  longitude: number;
+  radius_meter: number;
+  accuracy_tolerance_meter: number;
+};
+
+export type Absensi = {
+  id: string;
+  guru_id: string;
+  tanggal: string;
+  status: string;
+  jam_masuk?: string | null;
+  jam_keluar?: string | null;
+  distance_meter?: number | null;
+  accuracy?: number | null;
+  device_info?: string;
+  is_mock_location: boolean;
+};
+
+export type AbsensiRekap = {
+  guru_id: string;
+  nama: string;
+  hadir: number;
+  izin: number;
+  sakit: number;
+  alpa: number;
+};
+
 export type Notifikasi = {
   id: string;
   jenis: string;
