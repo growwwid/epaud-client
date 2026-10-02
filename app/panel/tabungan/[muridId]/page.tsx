@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DetailTabungan } from "./detail-tabungan";
 
 export const metadata: Metadata = {
-  title: "Detail Tabungan — ePAUD",
+  title: "Detail Tabungan",
   description: "Saldo dan riwayat transaksi tabungan anak.",
 };
 

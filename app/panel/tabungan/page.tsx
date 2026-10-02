@@ -16,7 +16,7 @@ import {
 import { CatatTransaksiModal } from "@/components/catat-transaksi-modal";
 import { downloadCsv } from "@/components/csv";
 import { ErrorText } from "@/components/crud-ui";
-import { TabunganHeatmap } from "@/components/tabungan-heatmap";
+import { useTahunAjaran } from "../tahun-ajaran-context";
 import {
   ChevronDownIcon,
   DownloadIcon,
@@ -64,12 +64,14 @@ function tipeLabel(tipe: string) {
  * Ambil seluruh rekap (semua halaman) agar filter kelas/nama & export berjalan
  * di client. ponytail: ambil-semua, pindah ke filter backend bila murid > ~1000.
  */
-async function fetchAllRekap(): Promise<ApiResult<SaldoMurid[]>> {
+async function fetchAllRekap(
+  withTahunAjaran: (path: string) => string,
+): Promise<ApiResult<SaldoMurid[]>> {
   const size = 100;
   const all: SaldoMurid[] = [];
   for (let page = 1; ; page += 1) {
     const res = await getEnvelope<TabunganRekap>(
-      `/api/tabungan/rekap?page=${page}&size=${size}`,
+      withTahunAjaran(`/api/tabungan/rekap?page=${page}&size=${size}`),
     );
     if (!res.ok) return res;
     const batch = res.data.data ?? [];
@@ -81,6 +83,7 @@ async function fetchAllRekap(): Promise<ApiResult<SaldoMurid[]>> {
 
 export default function TabunganPage() {
   const router = useRouter();
+  const { withTahunAjaran } = useTahunAjaran();
   const [role, setRole] = useState<string | null>(null);
   const [rows, setRows] = useState<SaldoMurid[]>([]);
   const [ringkasan, setRingkasan] = useState<RingkasanTabungan | null>(null);
@@ -121,9 +124,11 @@ export default function TabunganPage() {
       const [listRes, ringRes] = await Promise.all([
         ortu
           ? getJson<AnakTabungan[]>("/api/tabungan/anak")
-          : fetchAllRekap(),
+          : fetchAllRekap(withTahunAjaran),
         getJson<RingkasanTabungan>(
-          ortu ? "/api/tabungan/anak/ringkasan" : "/api/tabungan/ringkasan",
+          ortu
+            ? "/api/tabungan/anak/ringkasan"
+            : withTahunAjaran("/api/tabungan/ringkasan"),
         ),
       ]);
       if (!active) return;
@@ -140,7 +145,7 @@ export default function TabunganPage() {
     return () => {
       active = false;
     };
-  }, [router, reloadKey]);
+  }, [router, reloadKey, withTahunAjaran]);
 
   const kelasOptions = useMemo(
     () =>
@@ -258,8 +263,6 @@ export default function TabunganPage() {
         </div>
       </div>
 
-      {!isOrtu && canManage ? <TabunganHeatmap /> : null}
-
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[14rem] flex-1">
@@ -293,7 +296,7 @@ export default function TabunganPage() {
           <button
             type="button"
             onClick={exportCsv}
-            disabled={filtered.length === 0}
+            disabled={loading || filtered.length === 0}
             className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
           >
             <DownloadIcon className="size-5 text-slate-400" />
