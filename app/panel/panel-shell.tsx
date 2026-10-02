@@ -47,6 +47,7 @@ const AGENDA_ITEMS = [
 ];
 
 const SUPERADMIN_ITEMS = [
+  { label: "Kelola Sekolah", href: "/panel/kelola-sekolah", icon: BuildingIcon },
   { label: "Tiket Kendala", href: "/panel/tiket", icon: FileIcon },
 ];
 

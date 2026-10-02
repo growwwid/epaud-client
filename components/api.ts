@@ -213,6 +213,25 @@ export type SekolahProfil = {
   nilai: string[];
 };
 
+/** Sekolah pada daftar pengelolaan superadmin. */
+export type SekolahAdmin = {
+  id: string;
+  nama: string;
+  npsn: string;
+  tipe: string;
+  alamat: string;
+  status?: string;
+  logo?: string;
+};
+
+export type ImportKalenderResult = {
+  sumber_ref: string;
+  dibuat: number;
+  dilewati: number;
+  ditolak: number;
+  diabaikan: number;
+};
+
 export type TabunganRekap = {
   data: SaldoMurid[];
   meta: ListMeta;
