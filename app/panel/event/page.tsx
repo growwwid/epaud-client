@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  deleteJson,
   getJson,
+  patchJson,
   postJson,
   type KalenderItem,
   type MeResult,
@@ -41,7 +43,8 @@ export default function EventPage() {
   const [role, setRole] = useState<string | null>(null);
   const [items, setItems] = useState<KalenderItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formTarget, setFormTarget] = useState<KalenderItem | "new" | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -72,6 +75,14 @@ export default function EventPage() {
 
   const canManage = role ? MANAGE_ROLES.includes(role) : false;
 
+  async function removeEvent(event: KalenderItem) {
+    if (!window.confirm(`Hapus event "${event.judul}"?`)) return;
+    setBusyId(event.id);
+    const res = await deleteJson(`/api/event/${event.id}`);
+    setBusyId(null);
+    if (res.ok) setReloadKey((k) => k + 1);
+  }
+
   const events = useMemo(
     () =>
       items
@@ -98,7 +109,7 @@ export default function EventPage() {
           {canManage ? (
             <button
               type="button"
-              onClick={() => setFormOpen(true)}
+              onClick={() => setFormTarget("new")}
               className="flex h-10 items-center gap-2 rounded-xl bg-epaud-blue px-4 text-sm font-bold text-white transition hover:bg-epaud-blue-dark"
             >
               <PlusIcon className="size-4" />
@@ -151,6 +162,25 @@ export default function EventPage() {
                       ) : null}
                     </div>
                   </div>
+                  {canManage && event.tipe === "event_sekolah" ? (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setFormTarget(event)}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeEvent(event)}
+                        disabled={busyId === event.id}
+                        className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  ) : null}
                 </li>
               );
             })}
@@ -158,11 +188,13 @@ export default function EventPage() {
         )}
       </Panel>
 
-      {formOpen ? (
+      {formTarget ? (
         <EventForm
-          onClose={() => setFormOpen(false)}
+          key={formTarget === "new" ? "new" : formTarget.id}
+          item={formTarget === "new" ? undefined : formTarget}
+          onClose={() => setFormTarget(null)}
           onSaved={() => {
-            setFormOpen(false);
+            setFormTarget(null);
             setReloadKey((k) => k + 1);
           }}
         />
@@ -171,8 +203,22 @@ export default function EventPage() {
   );
 }
 
-function EventForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [allDay, setAllDay] = useState(true);
+function timeValue(iso: string) {
+  const d = new Date(iso);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function EventForm({
+  item,
+  onClose,
+  onSaved,
+}: {
+  item?: KalenderItem;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const editing = Boolean(item);
+  const [allDay, setAllDay] = useState(item ? item.all_day : true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -180,14 +226,16 @@ function EventForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => v
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const judul = String(data.get("judul") ?? "").trim();
-    const mulai = String(data.get("mulai") ?? "").trim();
-    if (!judul || !mulai) {
+    const date = String(data.get("tanggal") ?? "").trim();
+    const time = String(data.get("jam") ?? "").trim() || "08:00";
+    if (!judul || !date) {
       setError("Judul dan tanggal wajib diisi.");
       return;
     }
+    const mulai = allDay ? date : new Date(`${date}T${time}`).toISOString();
     setError(null);
     setSubmitting(true);
-    const res = await postJson("/api/event", {
+    const body = {
       judul,
       deskripsi: String(data.get("deskripsi") ?? "").trim(),
       lokasi: String(data.get("lokasi") ?? "").trim(),
@@ -196,7 +244,10 @@ function EventForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => v
       mulai,
       selesai: mulai,
       visibilitas: "default",
-    });
+    };
+    const res = item
+      ? await patchJson(`/api/event/${item.id}`, body)
+      : await postJson("/api/event", body);
     setSubmitting(false);
     if (!res.ok) {
       setError(res.error.message);
@@ -206,17 +257,35 @@ function EventForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => v
   }
 
   return (
-    <Modal title="Tambah Event" subtitle="Event tampil di kalender sekolah." onClose={onClose}>
+    <Modal
+      title={editing ? "Edit Event" : "Tambah Event"}
+      subtitle="Event tampil di kalender sekolah."
+      onClose={onClose}
+    >
       <form className="mt-5 space-y-4" onSubmit={handleSubmit} noValidate>
         <Field label="Judul *">
-          <input name="judul" className={inputClass} placeholder="Rapat orang tua" />
+          <input
+            name="judul"
+            className={inputClass}
+            placeholder="Rapat orang tua"
+            defaultValue={item?.judul ?? ""}
+          />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Tanggal *">
-            <input name="mulai" type="date" className={inputClass} />
+            <input
+              name="tanggal"
+              type="date"
+              className={inputClass}
+              defaultValue={item ? itemDateKey(item) : ""}
+            />
           </Field>
           <Field label="Kategori">
-            <select name="kategori" defaultValue="kegiatan" className={inputClass}>
+            <select
+              name="kategori"
+              defaultValue={item?.kategori ?? "kegiatan"}
+              className={inputClass}
+            >
               <option value="kegiatan">Kegiatan</option>
               <option value="rapat">Rapat</option>
               <option value="libur">Libur</option>
@@ -233,11 +302,31 @@ function EventForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => v
           />
           Sepanjang hari
         </label>
+        {allDay ? null : (
+          <Field label="Jam mulai">
+            <input
+              name="jam"
+              type="time"
+              className={inputClass}
+              defaultValue={item && !item.all_day ? timeValue(item.mulai) : "08:00"}
+            />
+          </Field>
+        )}
         <Field label="Lokasi">
-          <input name="lokasi" className={inputClass} placeholder="Aula sekolah" />
+          <input
+            name="lokasi"
+            className={inputClass}
+            placeholder="Aula sekolah"
+            defaultValue={item?.lokasi ?? ""}
+          />
         </Field>
         <Field label="Deskripsi">
-          <textarea name="deskripsi" rows={3} className={inputClass} />
+          <textarea
+            name="deskripsi"
+            rows={3}
+            className={inputClass}
+            defaultValue={item?.deskripsi ?? ""}
+          />
         </Field>
         {error ? <ErrorText>{error}</ErrorText> : null}
         <div className="flex justify-end gap-2 pt-1">
