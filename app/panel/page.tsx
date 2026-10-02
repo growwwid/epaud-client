@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getEnvelope, getJson, type Guru, type MeResult, type Murid, type TabunganRekap } from "@/components/api";
-import { MiniCalendar, dateKey } from "@/components/mini-calendar";
+import { getEnvelope, getJson, type Guru, type KalenderItem, type MeResult, type Murid, type TabunganRekap } from "@/components/api";
+import { MiniCalendar } from "@/components/mini-calendar";
 import { StatCard } from "@/components/stat-card";
-import { DUMMY_EVENTS } from "@/components/dummy-data";
+import { itemDateKey, tipeMeta } from "@/lib/kalender";
 import { useTahunAjaran } from "./tahun-ajaran-context";
 import {
   CalendarIcon,
@@ -45,10 +45,15 @@ const jam = new Intl.DateTimeFormat("id-ID", {
   minute: "2-digit",
 });
 
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
 export default function PanelPage() {
   const router = useRouter();
   const { withTahunAjaran } = useTahunAjaran();
   const [me, setMe] = useState<MeResult | null>(null);
+  const [events, setEvents] = useState<KalenderItem[]>([]);
   const [jumlahGuru, setJumlahGuru] = useState<number | null>(null);
   const [jumlahMurid, setJumlahMurid] = useState<number | null>(null);
   const [totalSaldo, setTotalSaldo] = useState<number | null>(null);
@@ -71,22 +76,42 @@ export default function PanelPage() {
       setMe(meRes.data);
       const role = meRes.data.role;
 
+      const requests: Promise<unknown>[] = [];
+      if (role !== "superadmin") requests.push(loadEvents());
+
       if (MANAGE_ROLES.includes(role)) {
-        const [guruRes, muridRes, rekapRes] = await Promise.all([
-          getJson<Guru[]>(withTahunAjaran("/api/guru")),
-          getJson<Murid[]>(withTahunAjaran("/api/murid")),
-          getEnvelope<TabunganRekap>(
-            withTahunAjaran("/api/tabungan/rekap?page=1&size=1"),
-          ),
-        ]);
-        if (!active) return;
-        if (guruRes.ok) setJumlahGuru(Array.isArray(guruRes.data) ? guruRes.data.length : 0);
-        if (muridRes.ok)
-          setJumlahMurid(Array.isArray(muridRes.data) ? muridRes.data.length : 0);
-        if (rekapRes.ok) setTotalSaldo(rekapRes.data.total_saldo ?? 0);
+        requests.push(
+          (async () => {
+            const [guruRes, muridRes, rekapRes] = await Promise.all([
+              getJson<Guru[]>(withTahunAjaran("/api/guru")),
+              getJson<Murid[]>(withTahunAjaran("/api/murid")),
+              getEnvelope<TabunganRekap>(
+                withTahunAjaran("/api/tabungan/rekap?page=1&size=1"),
+              ),
+            ]);
+            if (!active) return;
+            if (guruRes.ok)
+              setJumlahGuru(Array.isArray(guruRes.data) ? guruRes.data.length : 0);
+            if (muridRes.ok)
+              setJumlahMurid(Array.isArray(muridRes.data) ? muridRes.data.length : 0);
+            if (rekapRes.ok) setTotalSaldo(rekapRes.data.total_saldo ?? 0);
+          })(),
+        );
       }
 
-      setLoading(false);
+      await Promise.all(requests);
+      if (active) setLoading(false);
+    }
+
+    // Agregasi kalender (event sekolah, libur, ulang tahun) untuk bulan ini
+    // sampai dua bulan ke depan.
+    async function loadEvents() {
+      const now = new Date();
+      const from = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+      const end = new Date(now.getFullYear(), now.getMonth() + 3, 0);
+      const to = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+      const res = await getJson<KalenderItem[]>(`/api/kalender?from=${from}&to=${to}`);
+      if (active && res.ok) setEvents(Array.isArray(res.data) ? res.data : []);
     }
 
     load();
@@ -95,12 +120,16 @@ export default function PanelPage() {
     };
   }, [router, withTahunAjaran]);
 
-  const upcoming = useMemo(() => {
-    const today = dateKey(new Date());
-    return DUMMY_EVENTS.filter((event) => dateKey(event.tanggal_mulai) >= today)
-      .sort((a, b) => a.tanggal_mulai.localeCompare(b.tanggal_mulai))
-      .slice(0, 5);
-  }, []);
+  const todayKey = `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-${pad(new Date().getDate())}`;
+
+  const upcoming = useMemo(
+    () =>
+      events
+        .filter((event) => itemDateKey(event) >= todayKey)
+        .sort((a, b) => a.mulai.localeCompare(b.mulai))
+        .slice(0, 5),
+    [events, todayKey],
+  );
 
   const isManage = me ? MANAGE_ROLES.includes(me.role) : false;
 
@@ -174,44 +203,58 @@ export default function PanelPage() {
             </p>
           ) : (
             <ul className="mt-4 space-y-3">
-              {upcoming.map((event) => (
-                <li
-                  key={event.id}
-                  className="flex items-start gap-4 rounded-xl bg-slate-50/70 p-4"
-                >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-epaud-blue ring-1 ring-slate-100">
-                    <CalendarIcon className="size-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-800">{event.judul}</p>
-                    {event.deskripsi ? (
-                      <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">
-                        {event.deskripsi}
-                      </p>
-                    ) : null}
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
-                      <span className="inline-flex items-center gap-1">
-                        <ClockIcon className="size-3.5" />
-                        {event.all_day
-                          ? tanggal.format(new Date(event.tanggal_mulai))
-                          : `${tanggal.format(new Date(event.tanggal_mulai))} · ${jam.format(new Date(event.tanggal_mulai))}`}
-                      </span>
-                      {event.lokasi ? (
-                        <span className="inline-flex items-center gap-1">
-                          <MapPinIcon className="size-3.5" />
-                          {event.lokasi}
+              {upcoming.map((event) => {
+                const meta = tipeMeta(event.tipe);
+                return (
+                  <li
+                    key={`${event.tipe}-${event.id}`}
+                    className="flex items-start gap-4 rounded-xl bg-slate-50/70 p-4"
+                  >
+                    <span
+                      className={`flex size-11 shrink-0 items-center justify-center rounded-xl text-white ${meta.dot}`}
+                    >
+                      <CalendarIcon className="size-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-slate-800">{event.judul}</p>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${meta.badge}`}
+                        >
+                          {meta.label}
                         </span>
+                      </div>
+                      {event.deskripsi ? (
+                        <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">
+                          {event.deskripsi}
+                        </p>
                       ) : null}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                        <span className="inline-flex items-center gap-1">
+                          <ClockIcon className="size-3.5" />
+                          {event.all_day
+                            ? tanggal.format(
+                                new Date(`${itemDateKey(event)}T00:00:00`),
+                              )
+                            : `${tanggal.format(new Date(event.mulai))} · ${jam.format(new Date(event.mulai))}`}
+                        </span>
+                        {event.lokasi ? (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPinIcon className="size-3.5" />
+                            {event.lokasi}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <MiniCalendar events={DUMMY_EVENTS} />
+          <MiniCalendar events={events} />
           <p className="mt-4 text-xs text-slate-400">
             Tanggal bertanda titik memiliki event.
           </p>

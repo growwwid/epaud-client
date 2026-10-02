@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Event } from "./api";
+import type { KalenderItem } from "./api";
+import { itemDateKey } from "@/lib/kalender";
 import { ChevronDownIcon } from "./icons";
 
 const MONTHS = [
@@ -29,10 +30,10 @@ export function dateKey(value: Date | string) {
   return `${y}-${m}-${day}`;
 }
 
-export function eventsByDay(events: Event[]) {
-  const map = new Map<string, Event[]>();
+export function eventsByDay(events: KalenderItem[]) {
+  const map = new Map<string, KalenderItem[]>();
   for (const event of events) {
-    const key = dateKey(event.tanggal_mulai);
+    const key = itemDateKey(event);
     const list = map.get(key);
     if (list) list.push(event);
     else map.set(key, [event]);
@@ -45,7 +46,7 @@ export function MiniCalendar({
   selectedDate,
   onSelectDate,
 }: {
-  events: Event[];
+  events: KalenderItem[];
   selectedDate?: string;
   onSelectDate?: (key: string) => void;
 }) {
