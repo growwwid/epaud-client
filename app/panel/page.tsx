@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getEnvelope, getJson, type Guru, type KalenderItem, type MeResult, type Murid, type TabunganRekap } from "@/components/api";
+import { getJson, type DashboardStats, type KalenderItem, type MeResult } from "@/components/api";
 import { MiniCalendar } from "@/components/mini-calendar";
 import { StatCard } from "@/components/stat-card";
 import { itemDateKey, tipeMeta } from "@/lib/kalender";
@@ -82,19 +82,13 @@ export default function PanelPage() {
       if (MANAGE_ROLES.includes(role)) {
         requests.push(
           (async () => {
-            const [guruRes, muridRes, rekapRes] = await Promise.all([
-              getJson<Guru[]>(withTahunAjaran("/api/guru")),
-              getJson<Murid[]>(withTahunAjaran("/api/murid")),
-              getEnvelope<TabunganRekap>(
-                withTahunAjaran("/api/tabungan/rekap?page=1&size=1"),
-              ),
-            ]);
-            if (!active) return;
-            if (guruRes.ok)
-              setJumlahGuru(Array.isArray(guruRes.data) ? guruRes.data.length : 0);
-            if (muridRes.ok)
-              setJumlahMurid(Array.isArray(muridRes.data) ? muridRes.data.length : 0);
-            if (rekapRes.ok) setTotalSaldo(rekapRes.data.total_saldo ?? 0);
+            const res = await getJson<DashboardStats>(
+              withTahunAjaran("/api/dashboard"),
+            );
+            if (!active || !res.ok) return;
+            setJumlahGuru(res.data.jumlah_guru ?? 0);
+            setJumlahMurid(res.data.jumlah_murid ?? 0);
+            setTotalSaldo(res.data.total_saldo ?? 0);
           })(),
         );
       }
