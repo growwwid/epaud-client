@@ -241,6 +241,18 @@ export default function DataAnakPage() {
     runBulk((id) => deleteJson(`/api/murid/${id}`), "dikeluarkan");
   }
 
+  async function bulkRemovePermanent() {
+    const count = selected.size;
+    if (count === 0) return;
+    if (
+      !window.confirm(
+        `Hapus permanen ${count} anak terpilih? Data dan riwayatnya dihapus dan tidak dapat dikembalikan.`,
+      )
+    )
+      return;
+    runBulk((id) => deleteJson(`/api/murid/${id}/permanent`), "dihapus permanen");
+  }
+
   return (
     <div className="space-y-5">
       {/* Page header */}
@@ -296,7 +308,15 @@ export default function DataAnakPage() {
                     onClick={bulkRemove}
                     className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-300"
                   >
-                    Hapus
+                    Keluarkan
+                  </button>
+                  <button
+                    type="button"
+                    disabled={selected.size === 0}
+                    onClick={bulkRemovePermanent}
+                    className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                  >
+                    Hapus Permanen
                   </button>
                 </div>
               </>
@@ -668,6 +688,11 @@ export default function DataAnakPage() {
             reload();
             setNotice("Anak berhasil dikeluarkan.");
           }}
+          onPermanentlyDeleted={() => {
+            setDetail(null);
+            reload();
+            setNotice("Anak berhasil dihapus permanen.");
+          }}
         />
       ) : null}
 
@@ -955,12 +980,14 @@ function DetailModal({
   onEdit,
   onStatusChanged,
   onDeleted,
+  onPermanentlyDeleted,
 }: {
   row: AnakRow;
   onClose: () => void;
   onEdit: () => void;
   onStatusChanged: (status: string) => void;
   onDeleted: () => void;
+  onPermanentlyDeleted: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -992,6 +1019,21 @@ function DetailModal({
     const res = await deleteJson(`/api/murid/${row.id}`);
     setBusy(false);
     if (res.ok) onDeleted();
+    else setError(res.error.message);
+  }
+
+  async function removePermanent() {
+    if (
+      !window.confirm(
+        `Hapus permanen anak "${row.nama}"? Data dan riwayatnya dihapus dan tidak dapat dikembalikan.`,
+      )
+    )
+      return;
+    setBusy(true);
+    setError(null);
+    const res = await deleteJson(`/api/murid/${row.id}/permanent`);
+    setBusy(false);
+    if (res.ok) onPermanentlyDeleted();
     else setError(res.error.message);
   }
 
@@ -1028,6 +1070,14 @@ function DetailModal({
       ) : null}
 
       <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={removePermanent}
+          disabled={busy}
+          className="h-11 rounded-xl bg-red-600 px-5 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 disabled:opacity-50"
+        >
+          Hapus Permanen
+        </button>
         <button
           type="button"
           onClick={remove}

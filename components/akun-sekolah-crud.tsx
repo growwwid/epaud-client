@@ -109,6 +109,25 @@ export function AkunSekolahCrud({
     }
   }
 
+  async function removePermanent(item: AkunSekolah) {
+    if (
+      !window.confirm(
+        `Hapus permanen data orang tua "${item.nama}"? Akun dan tautan anaknya akan dihapus. Tindakan ini tidak dapat dibatalkan.`,
+      )
+    )
+      return;
+    setBusyId(item.akun_id);
+    setError(null);
+    const res = await deleteJson(`${endpoint}/${item.akun_id}/permanent`);
+    setBusyId(null);
+    if (res.ok) {
+      setNotice(`Data orang tua "${item.nama}" dihapus permanen.`);
+      reload();
+    } else {
+      setError(res.error.message);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader icon={icon} title={title} subtitle={subtitle} />
@@ -254,6 +273,16 @@ export function AkunSekolahCrud({
                         >
                           Nonaktifkan
                         </button>
+                        {isOrtu ? (
+                          <button
+                            type="button"
+                            onClick={() => removePermanent(item)}
+                            disabled={busyId === item.akun_id}
+                            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                          >
+                            Hapus Permanen
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

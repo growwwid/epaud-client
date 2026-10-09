@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-export const metadata: Metadata = { title: "Langganan" };
-
+// Sistem langganan dinonaktifkan sementara.
 export default function LanggananLayout({ children }: { children: ReactNode }) {
+  redirect("/panel");
   return children;
 }
