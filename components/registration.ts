@@ -1,12 +1,11 @@
 export type PendingRegistration = {
-  schoolName: string;
-  headmasterName: string;
-  contact: string;
-  schoolType: string;
+  schoolId: string;
+  kanal: string;
+  tujuan: string;
+  expiresIn: number;
 };
 
 export const PENDING_REGISTRATION_KEY = "epaud:pending-registration";
-export const SESSION_KEY = "epaud:session";
 
 export function savePendingRegistration(data: PendingRegistration) {
   try {
@@ -16,16 +15,6 @@ export function savePendingRegistration(data: PendingRegistration) {
     );
   } catch {
     // abaikan bila storage tidak tersedia
-  }
-}
-
-export function readPendingRegistration(): PendingRegistration | null {
-  try {
-    const raw = window.sessionStorage.getItem(PENDING_REGISTRATION_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as PendingRegistration;
-  } catch {
-    return null;
   }
 }
 

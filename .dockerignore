@@ -1,0 +1,28 @@
+# dependencies
+node_modules
+
+# next.js
+.next
+out
+build
+
+# version control / editor
+.git
+.gitignore
+.idea
+.vscode
+
+# docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# docs & metadata
+README.md
+AGENTS.md
+CLAUDE.md
+
+# env & typescript build cache
+.env*
+!.env.example
+*.tsbuildinfo
