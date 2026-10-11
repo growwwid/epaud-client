@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { KalenderItem } from "./api";
-import { itemDateKey } from "@/lib/kalender";
+import { itemDateKey, itemVisual } from "@/lib/kalender";
 import { ChevronDownIcon } from "./icons";
 
 const MONTHS = [
@@ -115,7 +115,7 @@ export function MiniCalendar({
 
         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((dayNum) => {
           const key = dateKey(new Date(year, month, dayNum));
-          const hasEvent = byDay.has(key);
+          const list = byDay.get(key) ?? [];
           const isSelected = selected === key;
           const isToday = key === todayKey;
           return (
@@ -132,12 +132,17 @@ export function MiniCalendar({
               }`}
             >
               {dayNum}
-              {hasEvent ? (
-                <span
-                  className={`absolute bottom-1 size-1.5 rounded-full ${
-                    isSelected ? "bg-white" : "bg-epaud-blue"
-                  }`}
-                />
+              {list.length > 0 ? (
+                <span className="absolute bottom-1 flex gap-0.5">
+                  {list.slice(0, 3).map((it, idx) => (
+                    <span
+                      key={idx}
+                      className={`size-1.5 rounded-full ${itemVisual(it).dot} ${
+                        isSelected ? "ring-1 ring-white" : ""
+                      }`}
+                    />
+                  ))}
+                </span>
               ) : null}
             </button>
           );

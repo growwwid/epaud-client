@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { getJson, type DashboardStats, type KalenderItem, type MeResult } from "@/components/api";
 import { MiniCalendar } from "@/components/mini-calendar";
 import { StatCard } from "@/components/stat-card";
-import { itemDateKey, tipeMeta } from "@/lib/kalender";
+import { itemDateKey, itemVisual } from "@/lib/kalender";
 import { useTahunAjaran } from "./tahun-ajaran-context";
 import {
   CalendarIcon,
@@ -198,7 +198,7 @@ export default function PanelPage() {
           ) : (
             <ul className="mt-4 space-y-3">
               {upcoming.map((event) => {
-                const meta = tipeMeta(event.tipe);
+                const meta = itemVisual(event);
                 return (
                   <li
                     key={`${event.tipe}-${event.id}`}

@@ -175,6 +175,8 @@ export type KalenderItem = {
   all_day: boolean;
   zona_waktu?: string;
   kategori?: string;
+  warna?: string;
+  updated_at?: string;
   cuti_bersama?: boolean;
   murid?: KalenderMuridRef;
 };

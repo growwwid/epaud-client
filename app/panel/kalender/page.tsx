@@ -2,16 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getJson, type KalenderItem } from "@/components/api";
+import { getJson, type KalenderItem, type MeResult } from "@/components/api";
+import { EventForm } from "@/components/event-form";
 import { Modal, PageHeader, Panel } from "@/components/crud-ui";
-import { CalendarIcon, ChevronDownIcon, ClockIcon, MapPinIcon } from "@/components/icons";
-import { itemDateKey, itemsByDay, monthRange, tipeMeta } from "@/lib/kalender";
+import {
+  CalendarIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  MapPinIcon,
+  PlusIcon,
+} from "@/components/icons";
+import {
+  itemDateKey,
+  itemVisual,
+  itemsByDay,
+  monthRange,
+} from "@/lib/kalender";
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 const WEEKDAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+const MANAGE_ROLES = ["kepala_sekolah", "admin_sekolah"];
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -31,6 +44,9 @@ export default function KalenderPage() {
   const [cursor, setCursor] = useState(() => new Date());
   const [items, setItems] = useState<KalenderItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [role, setRole] = useState<string | null>(null);
+  const [formDate, setFormDate] = useState<string | null>(null);
   const [selected, setSelected] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -39,6 +55,12 @@ export default function KalenderPage() {
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
+
+  useEffect(() => {
+    getJson<MeResult>("/api/auth/me").then((res) => {
+      if (res.ok) setRole(res.data.role);
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -55,8 +77,9 @@ export default function KalenderPage() {
     return () => {
       active = false;
     };
-  }, [year, month, router]);
+  }, [year, month, router, reloadKey]);
 
+  const canManage = role ? MANAGE_ROLES.includes(role) : false;
   const byDay = useMemo(() => itemsByDay(items), [items]);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const leading = (new Date(year, month, 1).getDay() + 6) % 7;
@@ -74,8 +97,8 @@ export default function KalenderPage() {
         subtitle="Agenda sekolah, event, hari libur, dan ulang tahun anak."
       />
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid gap-5 lg:grid-cols-5">
+        <div className="lg:col-span-3">
           <Panel>
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold text-epaud-navy">
@@ -116,7 +139,7 @@ export default function KalenderPage() {
                 const isSelected = selected === key;
                 const tooltip =
                   list.length > 0
-                    ? list.map((it) => `${tipeMeta(it.tipe).label}: ${it.judul}`).join("\n")
+                    ? list.map((it) => `${itemVisual(it).label}: ${it.judul}`).join("\n")
                     : undefined;
                 return (
                   <button
@@ -124,7 +147,7 @@ export default function KalenderPage() {
                     type="button"
                     title={tooltip}
                     onClick={() => setSelected(key)}
-                    className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm font-semibold transition ${
+                    className={`relative flex h-10 flex-col items-center justify-center rounded-lg text-[13px] font-semibold transition sm:h-11 ${
                       isSelected
                         ? "bg-epaud-blue text-white"
                         : "text-slate-600 hover:bg-slate-50"
@@ -132,11 +155,13 @@ export default function KalenderPage() {
                   >
                     {dayNum}
                     {list.length > 0 ? (
-                      <span className="absolute bottom-1 flex gap-0.5">
+                      <span className="absolute bottom-0.5 flex gap-0.5">
                         {list.slice(0, 3).map((it, idx) => (
                           <span
                             key={idx}
-                            className={`size-1.5 rounded-full ${isSelected ? "bg-white" : tipeMeta(it.tipe).dot}`}
+                            className={`size-1.5 rounded-full ${itemVisual(it).dot} ${
+                              isSelected ? "ring-2 ring-white" : ""
+                            }`}
                           />
                         ))}
                       </span>
@@ -148,58 +173,99 @@ export default function KalenderPage() {
           </Panel>
         </div>
 
-        <Panel>
-          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">
-            {tanggalPanjang.format(new Date(`${selected}T00:00:00`))}
-          </h2>
-          {loading ? (
-            <p className="mt-4 text-sm text-slate-400">Memuat…</p>
-          ) : dayItems.length === 0 ? (
-            <p className="mt-4 rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
-              Tidak ada agenda pada tanggal ini.
-            </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {dayItems.map((it) => {
-                const meta = tipeMeta(it.tipe);
-                return (
-                  <li key={`${it.tipe}-${it.id}`}>
-                    <button
-                      type="button"
-                      onClick={() => setDetail(it)}
-                      className="flex w-full items-start gap-3 rounded-xl bg-slate-50/70 p-4 text-left transition hover:bg-slate-100"
-                    >
-                      <span className={`mt-1 size-2.5 shrink-0 rounded-full ${meta.dot}`} />
-                      <span className="min-w-0">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-slate-800">{it.judul}</span>
-                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.badge}`}>
-                            {meta.label}
+        <div className="lg:col-span-2">
+          <Panel>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">
+              {tanggalPanjang.format(new Date(`${selected}T00:00:00`))}
+            </h2>
+            {loading ? (
+              <p className="mt-4 text-sm text-slate-400">Memuat…</p>
+            ) : dayItems.length === 0 ? (
+              canManage ? (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setFormDate(selected)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setFormDate(selected);
+                    }
+                  }}
+                  className="group mt-4 flex w-full cursor-pointer flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed border-slate-200 bg-gradient-to-br from-epaud-sky/70 via-white to-white px-6 py-8 text-center transition hover:-translate-y-0.5 hover:border-epaud-blue/60 hover:shadow-lg hover:shadow-epaud-blue/10"
+                >
+                  <span className="relative flex size-12 items-center justify-center rounded-2xl bg-white text-epaud-blue shadow-sm ring-1 ring-slate-100 transition group-hover:scale-105">
+                    <CalendarIcon className="size-6" />
+                    <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-epaud-blue text-white shadow">
+                      <PlusIcon className="size-3.5" />
+                    </span>
+                  </span>
+                  <span className="text-sm font-bold text-epaud-navy">
+                    Belum ada agenda
+                  </span>
+                  <span className="max-w-[16rem] text-xs leading-relaxed text-slate-500">
+                    Klik untuk menambah kegiatan di tanggal ini
+                  </span>
+                </div>
+              ) : (
+                <p className="mt-4 rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
+                  Tidak ada agenda pada tanggal ini.
+                </p>
+              )
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {dayItems.map((it) => {
+                  const meta = itemVisual(it);
+                  return (
+                    <li key={`${it.tipe}-${it.id}`}>
+                      <button
+                        type="button"
+                        onClick={() => setDetail(it)}
+                        className="flex w-full items-start gap-3 rounded-xl bg-slate-50/70 p-4 text-left transition hover:bg-slate-100"
+                      >
+                        <span className={`mt-1 size-2.5 shrink-0 rounded-full ${meta.dot}`} />
+                        <span className="min-w-0">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-slate-800">{it.judul}</span>
+                            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.badge}`}>
+                              {meta.label}
+                            </span>
                           </span>
+                          {!it.all_day ? (
+                            <span className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                              <ClockIcon className="size-3.5" />
+                              {jam.format(new Date(it.mulai))}
+                            </span>
+                          ) : null}
                         </span>
-                        {!it.all_day ? (
-                          <span className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                            <ClockIcon className="size-3.5" />
-                            {jam.format(new Date(it.mulai))}
-                          </span>
-                        ) : null}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Panel>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Panel>
+        </div>
       </div>
 
       {detail ? <ItemDetail item={detail} onClose={() => setDetail(null)} /> : null}
+
+      {formDate ? (
+        <EventForm
+          initialDate={formDate}
+          onClose={() => setFormDate(null)}
+          onSaved={() => {
+            setFormDate(null);
+            setReloadKey((k) => k + 1);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
 function ItemDetail({ item, onClose }: { item: KalenderItem; onClose: () => void }) {
-  const meta = tipeMeta(item.tipe);
+  const meta = itemVisual(item);
   return (
     <Modal
       title={item.judul}
