@@ -336,6 +336,7 @@ async function request<T>(
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
     });
     const payload = await res.json().catch(() => null);
     if (!res.ok) {

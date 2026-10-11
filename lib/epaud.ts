@@ -82,7 +82,13 @@ export async function forward(res: Response) {
  * user ter-logout tak sengaja.
  */
 const REFRESH_GRACE_MS = 10_000;
-const inflightRefreshes = new Map<string, Promise<TokenPair | null>>();
+
+type RefreshOutcome =
+  | { status: "ok"; tokens: TokenPair }
+  | { status: "invalid" }
+  | { status: "unavailable" };
+
+const inflightRefreshes = new Map<string, Promise<RefreshOutcome>>();
 const recentRefreshes = new Map<string, { tokens: TokenPair; at: number }>();
 
 function pruneRecentRefreshes() {
@@ -92,28 +98,36 @@ function pruneRecentRefreshes() {
   }
 }
 
-function refreshTokens(refresh: string): Promise<TokenPair | null> {
+function refreshTokens(refresh: string): Promise<RefreshOutcome> {
   const recent = recentRefreshes.get(refresh);
   if (recent && Date.now() - recent.at < REFRESH_GRACE_MS) {
-    return Promise.resolve(recent.tokens);
+    return Promise.resolve({ status: "ok", tokens: recent.tokens });
   }
 
   const existing = inflightRefreshes.get(refresh);
   if (existing) return existing;
 
-  const promise = (async () => {
+  const promise = (async (): Promise<RefreshOutcome> => {
     try {
       const res = await apiFetch("/api/v1/auth/refresh", {
         method: "POST",
         body: JSON.stringify({ refresh_token: refresh }),
       });
-      if (!res.ok) return null;
-      const payload = (await res.json()) as { data: TokenPair };
-      recentRefreshes.set(refresh, { tokens: payload.data, at: Date.now() });
-      pruneRecentRefreshes();
-      return payload.data;
+      if (res.ok) {
+        const payload = (await res.json()) as { data: TokenPair };
+        recentRefreshes.set(refresh, { tokens: payload.data, at: Date.now() });
+        pruneRecentRefreshes();
+        return { status: "ok", tokens: payload.data };
+      }
+      // Refresh ditolak eksplisit = token memang tidak berlaku lagi.
+      if (res.status === 400 || res.status === 401 || res.status === 403) {
+        return { status: "invalid" };
+      }
+      // 5xx / status tak terduga: gangguan sementara, jangan bunuh sesi.
+      return { status: "unavailable" };
     } catch {
-      return null;
+      // API tidak terjangkau (mis. deploy/restart): gangguan sementara.
+      return { status: "unavailable" };
     } finally {
       inflightRefreshes.delete(refresh);
     }
@@ -123,10 +137,25 @@ function refreshTokens(refresh: string): Promise<TokenPair | null> {
   return promise;
 }
 
+function serviceUnavailable() {
+  return NextResponse.json(
+    {
+      error: {
+        code: "service_unavailable",
+        message: "server sementara tidak tersedia, coba lagi sebentar lagi",
+      },
+    },
+    { status: 503 },
+  );
+}
+
 /**
  * Panggil API dengan Bearer token dari cookie. Bila access token kedaluwarsa,
  * tukar pakai refresh token (rotasi, single-flight) lalu ulangi sekali.
  * Response diteruskan apa adanya; cookie auth diperbarui saat token dirotasi.
+ *
+ * Kegagalan sementara (API restart/deploy, 5xx) TIDAK menghapus cookie agar
+ * user tidak ter-logout; cookie hanya dibersihkan bila refresh ditolak (4xx).
  */
 export async function authedProxy(path: string, init: RequestInit = {}) {
   const jar = await cookies();
@@ -143,7 +172,12 @@ export async function authedProxy(path: string, init: RequestInit = {}) {
     });
 
   if (access) {
-    const res = await call(access);
+    let res: Response;
+    try {
+      res = await call(access);
+    } catch {
+      return serviceUnavailable();
+    }
     if (res.status !== 401) return forward(res);
     if (!refresh) return clearAuthCookies(await forward(res));
   } else if (!refresh) {
@@ -153,8 +187,8 @@ export async function authedProxy(path: string, init: RequestInit = {}) {
     );
   }
 
-  const tokens = await refreshTokens(refresh);
-  if (!tokens) {
+  const outcome = await refreshTokens(refresh);
+  if (outcome.status === "invalid") {
     return clearAuthCookies(
       NextResponse.json(
         { error: { code: "unauthorized", message: "sesi berakhir" } },
@@ -162,7 +196,16 @@ export async function authedProxy(path: string, init: RequestInit = {}) {
       ),
     );
   }
+  if (outcome.status === "unavailable") {
+    return serviceUnavailable();
+  }
 
-  const res = await call(tokens.access_token);
-  return setAuthCookies(await forward(res), tokens);
+  let res: Response;
+  try {
+    res = await call(outcome.tokens.access_token);
+  } catch {
+    // Token baru sudah didapat; simpan supaya rotasi tidak hilang percuma.
+    return setAuthCookies(serviceUnavailable(), outcome.tokens);
+  }
+  return setAuthCookies(await forward(res), outcome.tokens);
 }
