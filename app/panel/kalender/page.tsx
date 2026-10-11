@@ -97,9 +97,9 @@ export default function KalenderPage() {
         subtitle="Agenda sekolah, event, hari libur, dan ulang tahun anak."
       />
 
-      <div className="grid gap-5 lg:grid-cols-5">
+      <div className="grid gap-5 lg:min-h-[calc(100vh-19rem)] lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <Panel>
+          <Panel className="flex h-full flex-col">
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold text-epaud-navy">
                 {MONTHS[month]} {year}
@@ -130,6 +130,9 @@ export default function KalenderPage() {
                   {label}
                 </span>
               ))}
+            </div>
+
+            <div className="mt-1 grid flex-1 auto-rows-fr grid-cols-7 gap-1 text-center">
               {Array.from({ length: leading }).map((_, i) => (
                 <span key={`blank-${i}`} />
               ))}
@@ -147,7 +150,7 @@ export default function KalenderPage() {
                     type="button"
                     title={tooltip}
                     onClick={() => setSelected(key)}
-                    className={`relative flex h-10 flex-col items-center justify-center rounded-lg text-[13px] font-semibold transition sm:h-11 ${
+                    className={`relative flex h-full min-h-10 w-full flex-col items-center justify-center rounded-lg text-[13px] font-semibold transition ${
                       isSelected
                         ? "bg-epaud-blue text-white"
                         : "text-slate-600 hover:bg-slate-50"
@@ -155,7 +158,7 @@ export default function KalenderPage() {
                   >
                     {dayNum}
                     {list.length > 0 ? (
-                      <span className="absolute bottom-0.5 flex gap-0.5">
+                      <span className="absolute bottom-1 flex gap-0.5">
                         {list.slice(0, 3).map((it, idx) => (
                           <span
                             key={idx}
@@ -174,7 +177,7 @@ export default function KalenderPage() {
         </div>
 
         <div className="lg:col-span-2">
-          <Panel>
+          <Panel className="h-full">
             <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">
               {tanggalPanjang.format(new Date(`${selected}T00:00:00`))}
             </h2>
