@@ -41,6 +41,9 @@ export type Murid = {
   jenis_kelamin?: string;
   status: string;
   foto?: string;
+  orang_tua_id?: string;
+  orang_tua_nama?: string;
+  orang_tua_phone?: string;
 };
 
 export type TahunAjaran = {
@@ -62,6 +65,7 @@ export type Kelas = {
 export type AkunSekolah = {
   akun_id: string;
   orang_id: string;
+  nik?: string;
   nama: string;
   email?: string;
   phone?: string;
@@ -84,16 +88,6 @@ export type AkunResult = {
   email?: string;
   phone?: string;
   password_default?: boolean;
-};
-
-/** Referensi orang (NIK). Backend mengembalikan field tanpa tag json. */
-export type OrangRef = {
-  id?: string;
-  ID?: string;
-  nik?: string;
-  NIK?: string;
-  nama?: string;
-  Nama?: string;
 };
 
 export type EventKategori =

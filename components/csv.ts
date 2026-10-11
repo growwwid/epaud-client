@@ -84,10 +84,3 @@ export function csvRowsToObjects(table: string[][]): Record<string, string>[] {
   });
 }
 
-/** Pisahkan sel berisi beberapa NIK (dipisah `;` atau `|`). */
-export function splitList(value: string): string[] {
-  return value
-    .split(/[;|]/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-}

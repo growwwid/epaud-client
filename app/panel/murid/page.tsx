@@ -7,6 +7,7 @@ import {
   getJson,
   patchJson,
   postJson,
+  type AkunSekolah,
   type ApiResult,
   type Murid,
 } from "@/components/api";
@@ -21,7 +22,6 @@ import {
   XIcon,
 } from "@/components/icons";
 import { Field, inputClass, Modal, OptionalFields } from "@/components/crud-ui";
-import { PasswordInput } from "@/components/password-input";
 import { PhotoInput } from "@/components/photo-input";
 import { OrangTuaPicker } from "@/components/orang-tua-picker";
 import { CsvImport } from "@/components/csv-import";
@@ -36,6 +36,7 @@ type AnakRow = {
   jenisKelamin: string;
   jenisKelaminRaw: string;
   kelas: string;
+  ortuId: string;
   ortuNama: string;
   ortuPhone: string;
   status: string;
@@ -81,8 +82,9 @@ function toRow(murid: Murid): AnakRow {
     jenisKelamin: jenisKelaminLabel(murid.jenis_kelamin),
     jenisKelaminRaw: validJk,
     kelas: "—",
-    ortuNama: "—",
-    ortuPhone: "—",
+    ortuId: murid.orang_tua_id ?? "",
+    ortuNama: murid.orang_tua_nama ?? "—",
+    ortuPhone: murid.orang_tua_phone ?? "—",
     status: murid.status,
     foto: murid.foto,
   };
@@ -120,7 +122,6 @@ export default function DataAnakPage() {
 
   const [muridOpen, setMuridOpen] = useState(false);
   const [editing, setEditing] = useState<AnakRow | null>(null);
-  const [ortuOpen, setOrtuOpen] = useState(false);
   const [detail, setDetail] = useState<AnakRow | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -392,33 +393,38 @@ export default function DataAnakPage() {
             ) : null}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setOrtuOpen(true)}
-            className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-          >
-            <UserIcon className="size-5 text-slate-400" />
-            Tambah Orang Tua
-          </button>
-
           <CsvImport
             templateName="contoh-murid.csv"
-            headers={["nama", "nik", "nisn", "tanggal_lahir", "jenis_kelamin"]}
+            headers={["nama", "nik", "nisn", "tanggal_lahir", "jenis_kelamin", "nik_orang_tua"]}
             example={[
-              ["Aisyah Putri", "3201234567890002", "0123456789", "2020-03-15", "perempuan"],
-              ["Raka Pratama", "3201234567890003", "0123456790", "2019-11-02", "laki_laki"],
+              ["Aisyah Putri", "3201234567890002", "0123456789", "2020-03-15", "perempuan", "3201234567890004"],
+              ["Raka Pratama", "3201234567890003", "0123456790", "2019-11-02", "laki_laki", ""],
             ]}
             onImport={async (rows) => {
+              const parents = await getJson<AkunSekolah[]>("/api/orang-tua");
+              const byNik = new Map<string, string>();
+              if (parents.ok) {
+                for (const ortu of parents.data) {
+                  if (ortu.nik) byNik.set(ortu.nik, ortu.orang_id);
+                }
+              }
               let ok = 0;
               const errors: string[] = [];
               for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
+                const nikOrtu = (row.nik_orang_tua ?? "").trim();
+                const orangTuaId = nikOrtu ? byNik.get(nikOrtu) ?? "" : "";
+                if (nikOrtu && !orangTuaId) {
+                  errors.push(`Baris ${i + 2}: NIK orang tua tidak ditemukan: ${nikOrtu}`);
+                  continue;
+                }
                 const res = await postJson<Murid>("/api/murid", {
                   nama: row.nama,
                   nik: row.nik,
                   nisn: row.nisn,
                   tanggal_lahir: row.tanggal_lahir,
                   jenis_kelamin: row.jenis_kelamin,
+                  orang_tua_id: orangTuaId,
                 });
                 if (res.ok) ok++;
                 else errors.push(`Baris ${i + 2}: ${res.error.message}`);
@@ -664,16 +670,6 @@ export default function DataAnakPage() {
         />
       ) : null}
 
-      {ortuOpen ? (
-        <CreateOrtuModal
-          onClose={() => setOrtuOpen(false)}
-          onCreated={(nama) => {
-            setOrtuOpen(false);
-            setNotice(`Akun orang tua "${nama}" berhasil dibuat.`);
-          }}
-        />
-      ) : null}
-
       {detail ? (
         <DetailModal
           row={detail}
@@ -784,7 +780,10 @@ function MuridFormModal({
             <PhotoInput name="foto" initial={item?.foto ?? ""} shape="circle" />
           </Field>
           <Field label="Orang Tua / Wali">
-            <OrangTuaPicker initialNama={item?.ortuNama && item.ortuNama !== "—" ? item.ortuNama : ""} />
+            <OrangTuaPicker
+              initialId={item?.ortuId ?? ""}
+              initialNama={item?.ortuNama && item.ortuNama !== "—" ? item.ortuNama : ""}
+            />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             {editing ? null : (
@@ -845,129 +844,6 @@ function MuridFormModal({
           >
             {submitting ? "Menyimpan..." : editing ? "Perbarui" : "Simpan"}
           </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-function CreateOrtuModal({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated: (nama: string) => void;
-}) {
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [defaultPassword, setDefaultPassword] = useState(false);
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const nama = String(data.get("nama") ?? "").trim();
-    const anakNik = String(data.get("anak_nik") ?? "")
-      .split(/[\n,]/)
-      .map((value) => value.trim())
-      .filter(Boolean);
-    const payload = {
-      nama,
-      nik: String(data.get("nik") ?? "").trim(),
-      email: String(data.get("email") ?? "").trim(),
-      phone: String(data.get("phone") ?? "").trim(),
-      password: String(data.get("password") ?? ""),
-      anak_nik: anakNik,
-    };
-    if (!nama) {
-      setError("Nama orang tua wajib diisi.");
-      return;
-    }
-
-    setError(null);
-    setSubmitting(true);
-    const res = await postJson<{ password_default?: boolean }>("/api/orang-tua", payload);
-    if (res.ok) {
-      if (res.data?.password_default) {
-        setDefaultPassword(true);
-        setSubmitting(false);
-        return;
-      }
-      onCreated(nama);
-      return;
-    }
-    setSubmitting(false);
-    setError(res.error.message);
-  }
-
-  return (
-    <Modal
-      title="Tambah Orang Tua"
-      subtitle="Akun login dibuat otomatis & ditautkan ke anak via NIK."
-      onClose={onClose}
-    >
-      <form className="mt-5 space-y-4" onSubmit={handleSubmit} noValidate>
-        <Field label="Nama Lengkap *">
-          <input name="nama" className={inputClass} placeholder="Nama orang tua/wali" />
-        </Field>
-        <OptionalFields>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="NIK">
-              <input name="nik" className={inputClass} placeholder="NIK orang tua" />
-            </Field>
-            <Field label="No. HP">
-              <input name="phone" className={inputClass} placeholder="08xxxxxxxxxx" />
-            </Field>
-          </div>
-          <Field label="Email">
-            <input name="email" type="email" className={inputClass} placeholder="email@contoh.id" />
-          </Field>
-          <Field label="NIK Anak">
-            <textarea
-              name="anak_nik"
-              rows={3}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10"
-              placeholder="Satu NIK per baris (harus sudah terdaftar sebagai murid)"
-            />
-          </Field>
-          <Field label="Password">
-            <PasswordInput
-              name="password"
-              className={inputClass}
-              placeholder="Kosongkan untuk password default"
-              hint="Kosongkan untuk memakai password default (default123)."
-            />
-          </Field>
-        </OptionalFields>
-
-        {error ? (
-          <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600">
-            {error}
-          </p>
-        ) : null}
-
-        {defaultPassword ? (
-          <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-700">
-            Akun dibuat dengan password default. Minta orang tua segera mengubahnya.
-          </p>
-        ) : null}
-
-        <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-          >
-            {defaultPassword ? "Tutup" : "Batal"}
-          </button>
-          {defaultPassword ? null : (
-            <button
-              type="submit"
-              disabled={submitting}
-              className="h-11 rounded-xl bg-epaud-blue px-6 text-sm font-bold text-white shadow-lg shadow-epaud-blue/25 transition hover:bg-epaud-blue-dark disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
-            >
-              {submitting ? "Menyimpan..." : "Simpan"}
-            </button>
-          )}
         </div>
       </form>
     </Modal>

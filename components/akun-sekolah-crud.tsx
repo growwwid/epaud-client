@@ -8,11 +8,9 @@ import {
   getJson,
   patchJson,
   postJson,
-  putJson,
   type AkunResult,
   type AkunSekolah,
   type ApiResult,
-  type OrangRef,
 } from "@/components/api";
 import {
   buttonGhost,
@@ -31,8 +29,7 @@ import {
 import { PasswordInput } from "@/components/password-input";
 import { PhotoInput } from "@/components/photo-input";
 import { CsvImport } from "@/components/csv-import";
-import { splitList } from "@/components/csv";
-import { PlusIcon } from "@/components/icons";
+import { ChevronDownIcon, PlusIcon } from "@/components/icons";
 
 export function AkunSekolahCrud({
   variant,
@@ -57,9 +54,10 @@ export function AkunSekolahCrud({
   const [notice, setNotice] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AkunSekolah | null>(null);
-  const [anakTarget, setAnakTarget] = useState<AkunSekolah | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const apply = useCallback(
@@ -94,6 +92,11 @@ export function AkunSekolahCrud({
       ),
     );
   }, [items, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * perPage;
+  const pageItems = filtered.slice(start, start + perPage);
 
   async function remove(item: AkunSekolah) {
     if (!window.confirm(`Nonaktifkan akun "${item.nama}"?`)) return;
@@ -137,17 +140,20 @@ export function AkunSekolahCrud({
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setPage(1);
+            }}
             placeholder="Cari nama, email, atau no. HP..."
             className="h-11 min-w-[14rem] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:bg-white focus:ring-4 focus:ring-epaud-blue/10"
           />
           {isOrtu ? (
             <CsvImport
               templateName="contoh-orang-tua.csv"
-              headers={["nama", "nik", "email", "phone", "password", "anak_nik"]}
+              headers={["nama", "nik", "email", "phone", "password"]}
               example={[
-                ["Siti Rahayu", "3201234567890004", "siti@email.id", "081234567891", "rahasia123", "3201234567890002;3201234567890003"],
-                ["Andi Wijaya", "", "andi@email.id", "081234567892", "", ""],
+                ["Siti Rahayu", "3201234567890004", "siti@email.id", "081234567891", "rahasia123"],
+                ["Andi Wijaya", "", "andi@email.id", "081234567892", ""],
               ]}
               onImport={async (rows) => {
                 let ok = 0;
@@ -160,7 +166,6 @@ export function AkunSekolahCrud({
                     email: row.email,
                     phone: row.phone,
                     password: row.password,
-                    anak_nik: splitList(row.anak_nik ?? ""),
                   });
                   if (res.ok) ok++;
                   else errors.push(`Baris ${i + 2}: ${res.error.message}`);
@@ -209,16 +214,16 @@ export function AkunSekolahCrud({
             <tbody>
               {loading ? (
                 <EmptyRow colSpan={5} label="Memuat data..." />
-              ) : filtered.length === 0 ? (
+              ) : pageItems.length === 0 ? (
                 <EmptyRow colSpan={5} label="Tidak ada data." />
               ) : (
-                filtered.map((item, index) => (
+                pageItems.map((item, index) => (
                   <tr
                     key={item.akun_id}
                     className="rounded-xl bg-slate-50/60 text-sm text-slate-700"
                   >
                     <td className="rounded-l-xl px-4 py-3 text-slate-500">
-                      {index + 1}
+                      {start + index + 1}
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-semibold text-slate-800">
@@ -249,15 +254,6 @@ export function AkunSekolahCrud({
                     </td>
                     <td className="rounded-r-xl px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        {isOrtu ? (
-                          <button
-                            type="button"
-                            onClick={() => setAnakTarget(item)}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                          >
-                            Kelola Anak
-                          </button>
-                        ) : null}
                         <button
                           type="button"
                           onClick={() => setEditing(item)}
@@ -291,6 +287,61 @@ export function AkunSekolahCrud({
             </tbody>
           </table>
         </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+          <p>
+            Menampilkan {filtered.length === 0 ? 0 : start + 1} -{" "}
+            {Math.min(start + perPage, filtered.length)} dari {filtered.length} data
+          </p>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setPage(currentPage - 1)}
+                aria-label="Halaman sebelumnya"
+                className="flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
+              >
+                <ChevronDownIcon className="size-4 rotate-90" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPage(p)}
+                  className={`flex size-9 items-center justify-center rounded-lg text-sm font-semibold transition ${
+                    p === currentPage
+                      ? "bg-epaud-blue text-white"
+                      : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage(currentPage + 1)}
+                aria-label="Halaman berikutnya"
+                className="flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
+              >
+                <ChevronDownIcon className="size-4 -rotate-90" />
+              </button>
+            </div>
+            <select
+              value={perPage}
+              onChange={(event) => {
+                setPerPage(Number(event.target.value));
+                setPage(1);
+              }}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-epaud-blue"
+            >
+              <option value={10}>10 / halaman</option>
+              <option value={25}>25 / halaman</option>
+              <option value={50}>50 / halaman</option>
+            </select>
+          </div>
+        </div>
       </Panel>
 
       {formOpen ? (
@@ -321,145 +372,7 @@ export function AkunSekolahCrud({
           }}
         />
       ) : null}
-
-      {anakTarget ? (
-        <AnakModal
-          akun={anakTarget}
-          onClose={() => setAnakTarget(null)}
-          onSaved={(nama) => {
-            setAnakTarget(null);
-            setNotice(`Tautan anak "${nama}" berhasil diperbarui.`);
-          }}
-        />
-      ) : null}
     </div>
-  );
-}
-
-function anakNama(anak: OrangRef) {
-  return anak.nama ?? anak.Nama ?? "Tanpa nama";
-}
-
-function anakNik(anak: OrangRef) {
-  return anak.nik ?? anak.NIK ?? "";
-}
-
-function AnakModal({
-  akun,
-  onClose,
-  onSaved,
-}: {
-  akun: AkunSekolah;
-  onClose: () => void;
-  onSaved: (nama: string) => void;
-}) {
-  const [items, setItems] = useState<OrangRef[]>([]);
-  const [nikText, setNikText] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    getJson<OrangRef[]>(`/api/orang-tua/${akun.akun_id}/anak`).then((res) => {
-      if (!active) return;
-      if (res.ok) {
-        const list = Array.isArray(res.data) ? res.data : [];
-        setItems(list);
-        setNikText(list.map(anakNik).filter(Boolean).join("\n"));
-      } else {
-        setError(res.error.message);
-      }
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [akun.akun_id]);
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const anak_nik = nikText
-      .split(/[\n,]/)
-      .map((value) => value.trim())
-      .filter(Boolean);
-
-    setError(null);
-    setSubmitting(true);
-    const res = await putJson<OrangRef[]>(`/api/orang-tua/${akun.akun_id}/anak`, {
-      anak_nik,
-    });
-    setSubmitting(false);
-
-    if (!res.ok) {
-      setError(res.error.message);
-      return;
-    }
-
-    onSaved(akun.nama);
-  }
-
-  return (
-    <Modal
-      title="Kelola Anak"
-      subtitle={`Tautan anak untuk akun ${akun.nama} (berdasarkan NIK murid).`}
-      onClose={onClose}
-    >
-      <div className="mt-5 space-y-4">
-        <div>
-          <span className="pl-1 text-[13px] font-semibold text-slate-600">
-            Anak tertaut saat ini
-          </span>
-          {loading ? (
-            <p className="mt-2 text-sm text-slate-400">Memuat data...</p>
-          ) : items.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-400">Belum ada anak tertaut.</p>
-          ) : (
-            <ul className="mt-2 space-y-1.5">
-              {items.map((anak, index) => (
-                <li
-                  key={`${anakNik(anak)}-${index}`}
-                  className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5 text-sm"
-                >
-                  <span className="font-semibold text-slate-700">
-                    {anakNama(anak)}
-                  </span>
-                  <span className="text-slate-400">{anakNik(anak) || "—"}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-          <Field label="NIK Anak (ganti seluruh tautan)">
-            <textarea
-              name="anak_nik"
-              rows={4}
-              value={nikText}
-              onChange={(event) => setNikText(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10"
-              placeholder="Satu NIK per baris (harus sudah terdaftar sebagai murid)"
-            />
-          </Field>
-
-          {error ? <ErrorText>{error}</ErrorText> : null}
-
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className={buttonGhost}>
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || loading}
-              className={buttonPrimary}
-            >
-              {submitting ? "Menyimpan..." : "Simpan"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </Modal>
   );
 }
 
@@ -496,20 +409,6 @@ function AkunForm({
     setError(null);
     setSubmitting(true);
 
-    if (item) {
-      const res = await patchJson<AkunSekolah>(`${endpoint}/${item.akun_id}`, {
-        nama,
-        email,
-        phone,
-        password,
-        foto: String(data.get("foto") ?? ""),
-      });
-      setSubmitting(false);
-      if (res.ok) onSaved(nama);
-      else setError(res.error.message);
-      return;
-    }
-
     const body: Record<string, unknown> = {
       nama,
       email,
@@ -519,11 +418,16 @@ function AkunForm({
     };
     if (isOrtu) {
       body.nik = String(data.get("nik") ?? "").trim();
-      body.anak_nik = String(data.get("anak_nik") ?? "")
-        .split(/[\n,]/)
-        .map((value) => value.trim())
-        .filter(Boolean);
     }
+
+    if (item) {
+      const res = await patchJson<AkunSekolah>(`${endpoint}/${item.akun_id}`, body);
+      setSubmitting(false);
+      if (res.ok) onSaved(nama);
+      else setError(res.error.message);
+      return;
+    }
+
     const res = await postJson<AkunResult>(endpoint, body);
     setSubmitting(false);
     if (res.ok) onSaved(nama, res.data?.password_default);
@@ -549,11 +453,27 @@ function AkunForm({
             defaultValue={item?.nama ?? ""}
           />
         </Field>
-        <OptionalFields>
-          <Field label="Foto">
-            <PhotoInput name="foto" initial={item?.foto ?? ""} shape="circle" />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
+
+        {isOrtu ? (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="NIK">
+                <input
+                  name="nik"
+                  className={inputClass}
+                  placeholder="NIK orang tua"
+                  defaultValue={item?.nik ?? ""}
+                />
+              </Field>
+              <Field label="No. HP">
+                <input
+                  name="phone"
+                  className={inputClass}
+                  placeholder="08xxxxxxxxxx"
+                  defaultValue={item?.phone ?? ""}
+                />
+              </Field>
+            </div>
             <Field label="Email">
               <input
                 name="email"
@@ -563,45 +483,62 @@ function AkunForm({
                 defaultValue={item?.email ?? ""}
               />
             </Field>
-            <Field label="No. HP">
-              <input
-                name="phone"
+            <Field label="Password">
+              <PasswordInput
+                name="password"
                 className={inputClass}
-                placeholder="08xxxxxxxxxx"
-                defaultValue={item?.phone ?? ""}
+                placeholder={editing ? "Kosongkan bila tidak diubah" : "Kosongkan untuk password default"}
+                hint={
+                  editing
+                    ? undefined
+                    : "Kosongkan untuk memakai password default (default123)."
+                }
               />
             </Field>
-          </div>
-
-          {isOrtu && !editing ? (
-            <>
-              <Field label="NIK">
-                <input name="nik" className={inputClass} placeholder="NIK orang tua" />
+            <OptionalFields>
+              <Field label="Foto">
+                <PhotoInput name="foto" initial={item?.foto ?? ""} shape="circle" />
               </Field>
-              <Field label="NIK Anak">
-                <textarea
-                  name="anak_nik"
-                  rows={3}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-epaud-blue focus:ring-4 focus:ring-epaud-blue/10"
-                  placeholder="Satu NIK per baris (harus sudah terdaftar sebagai murid)"
+            </OptionalFields>
+          </>
+        ) : (
+          <OptionalFields>
+            <Field label="Foto">
+              <PhotoInput name="foto" initial={item?.foto ?? ""} shape="circle" />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Email">
+                <input
+                  name="email"
+                  type="email"
+                  className={inputClass}
+                  placeholder="email@contoh.id"
+                  defaultValue={item?.email ?? ""}
                 />
               </Field>
-            </>
-          ) : null}
-
-          <Field label="Password">
-            <PasswordInput
-              name="password"
-              className={inputClass}
-              placeholder={editing ? "Kosongkan bila tidak diubah" : "Kosongkan untuk password default"}
-              hint={
-                editing
-                  ? undefined
-                  : "Kosongkan untuk memakai password default (default123)."
-              }
-            />
-          </Field>
-        </OptionalFields>
+              <Field label="No. HP">
+                <input
+                  name="phone"
+                  className={inputClass}
+                  placeholder="08xxxxxxxxxx"
+                  defaultValue={item?.phone ?? ""}
+                />
+              </Field>
+            </div>
+            <Field label="Password">
+              <PasswordInput
+                name="password"
+                className={inputClass}
+                placeholder={editing ? "Kosongkan bila tidak diubah" : "Kosongkan untuk password default"}
+                hint={
+                  editing
+                    ? undefined
+                    : "Kosongkan untuk memakai password default (default123)."
+                }
+              />
+            </Field>
+          </OptionalFields>
+        )}
 
         {error ? <ErrorText>{error}</ErrorText> : null}
 

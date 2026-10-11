@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseCsv, csvRowsToObjects, splitList } from "./csv.ts";
+import { parseCsv, csvRowsToObjects } from "./csv.ts";
 
 test("parseCsv: kutipan, koma, newline, BOM", () => {
   const input =
@@ -18,7 +18,3 @@ test("csvRowsToObjects: header lowercase, baris kosong dibuang", () => {
   ]);
 });
 
-test("splitList: pisah ; dan |", () => {
-  assert.deepEqual(splitList("a; b|c"), ["a", "b", "c"]);
-  assert.deepEqual(splitList(""), []);
-});

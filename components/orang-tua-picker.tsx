@@ -8,18 +8,20 @@ import { SearchIcon, XIcon } from "./icons";
 /**
  * Autocomplete orang tua (scope sekolah). Memilih data orang tua yang sudah ada
  * (tidak membuat baru) via hidden input `orang_tua_id`. Anak kembar dapat
- * memakai orang tua yang sama.
+ * memakai orang tua yang sama. Seluruh data ditampilkan urut nama ASC.
  */
 export function OrangTuaPicker({
+  initialId = "",
   initialNama = "",
   hiddenName = "orang_tua_id",
 }: {
+  initialId?: string;
   initialNama?: string;
   hiddenName?: string;
 }) {
   const [list, setList] = useState<AkunSekolah[]>([]);
   const [query, setQuery] = useState(initialNama);
-  const [selectedId, setSelectedId] = useState("");
+  const [selectedId, setSelectedId] = useState(initialId);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -33,9 +35,12 @@ export function OrangTuaPicker({
   }, []);
 
   const filtered = useMemo(() => {
+    const sorted = [...list].sort((a, b) =>
+      a.nama.localeCompare(b.nama, "id", { sensitivity: "base" }),
+    );
     const q = query.trim().toLowerCase();
-    if (!q) return list.slice(0, 8);
-    return list.filter((o) => o.nama.toLowerCase().includes(q)).slice(0, 8);
+    if (!q) return sorted;
+    return sorted.filter((o) => o.nama.toLowerCase().includes(q));
   }, [list, query]);
 
   function pick(o: AkunSekolah) {
